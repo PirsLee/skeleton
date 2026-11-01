@@ -1,0 +1,33 @@
+﻿tier	commit	date	author	subject	files	added	deleted	churn	A	M	D	type	why	ask
+S	d801218	2018-03-08	Patrick Venture	PID Objects & Algo	16	1463	0	1463	16	0	0	骨架建立	算法+对象模型+调度+failsafe 一刀落成，8 年演化的原点	为何写死风扇聚合策略却外置全部 PID 参数；failsafe 90% 的受益方是谁
+S	863b924	2018-03-08	Patrick Venture	Sensor Objects	26	1297	0	1297	26	0	0	抽象/解耦	Sensor 接口 + 读/写分离 + notimpl 空实现，依赖倒置首次落地	notimpl read 返回什么值，它如何决定 failsafe 触发
+S	e620656	2018-03-08	Patrick Venture	Scripts and main daemon	30	1582	0	1582	30	0	0	集成/构建	首次可运行；Mako 生成 C++ 的配置方案，11 个月后被 JSON 取代	代码生成 vs 运行期解析的校验能力与代价
+S	7136a5a	2018-07-19	James Feist	Add ability to configure from dbus	10	560	1	561	4	6	0	部署模型	配置从静态文件搬到 D-Bus，OpenBMC 生态强约束的体现	两套配置源并存期如何定优先级与降级
+S	22c257a	2018-08-31	James Feist	Add stepwise controller	19	636	258	894	5	12	0	抽象扩展	首个非 PID 控制律，逼出 pidcontroller 改名与抽象重划	Stepwise 与 PID 的共享点/差异点，为何不合并成一个类
+S	ce6a3f3	2019-03-12	James Feist	Remove threads	9	167	197	364	2	3	4	并发模型	std::thread+sleep 换成 boost::asio steady_timer 事件循环	定时器漂移与 zone 隔离性丢失；ts 语义是否随之改变
+A	cc74ae1	2018-10-10	Patrick Venture	docs: Ported Design Doc to OpenBMC	2	319	1	320	1	1	0	文档	唯一的设计文档提交（README 320 行 + 架构图），语用/语境金矿	文档承诺的机制代码兑现了几个
+A	5c7cc54	2018-06-11	Patrick Venture	pid: zone split out builders	15	332	257	589	4	11	0	分层/可测性	构造与运行分离（builder），zone 才可单测	拆完后 zone 还背着哪些不该它管的职责
+A	a58197c	2018-06-11	Patrick Venture	test: pid: zone	13	486	37	523	2	11	0	测试体系	测试基建起点，gmock 掉传感器与 D-Bus	为可测被迫改了生产代码的哪些接口
+A	ba8ffa7	2019-02-11	Patrick Venture	swap libconfig++ for json in configuration parsing	10	178	404	582	1	4	5	配置换代	libconfig++ 换 JSON，删多于加	JSON 带来什么、丢失什么（类型安全/注释/默认值）
+A	18b1311	2019-02-14	Patrick Venture	build: drop support for YAML configurations	19	107	527	634	1	5	13	删除	三天后彻底删掉 YAML 与代码生成路线	一条路线被判死刑用了 11 个月，判据是什么
+A	1fe0895	2019-05-07	James Feist	Make dbusconfiguration reloadable without reboot	10	161	112	273	0	10	0	生命周期	配置热重载：对象重建、状态迁移与 zone 存活期	重载瞬间积分项与上次输出怎么处理
+A	98b704e	2019-06-03	James Feist	Add Fan Redundancy Support	8	276	18	294	2	6	0	传感器语义	冗余 tach（dbuspassiveredundancy）作为一个风扇	冗余读数聚合策略，与 min 聚合如何叠加
+A	8f73ad7	2021-10-07	Alex.Song	Make specific UNA sensors not trigger failsafe	13	484	4	488	0	13	0	监控语义	UNA 传感器不再一律触发 failsafe	UNA/不可读/掉线的语义边界；暴露 S1 哪条漏洞
+A	0e8fc39	2022-10-05	Bonnie Lo	Support derivative term in PID algorithm and support to set cycle interval time from fan table	14	174	24	198	0	14	0	算法	4 年半后补 D 项，周期改由 fan table 配置	当年为何名为 PID 却无 D；补 D 后抗饱和是否仍缺前馈
+A	31058fd	2023-01-13	Josh Lehan	Implementing the TempToMargin feature	13	294	42	336	0	13	0	领域模型	TempToMargin 变换，热控制器输入语义改变	变换放在 sensor 层还是 controller 层，为什么
+A	9788963	2023-11-06	Delphine CC Chiu	Support to accumulate PWM of different controllers for same sensor	14	217	54	271	0	14	0	执行器冲突	多 controller 写同一 PWM 从覆盖改为叠加并限幅	叠加上限谁定；与 max 仲裁是否打架
+A	aadb30d	2020-08-10	Patrick Venture	move dbus helper interface into its own file	16	401	318	719	4	10	0	依赖方向	D-Bus 依赖剥离为 dbushelper_interface，为核心解耦铺路	剥离后单测里还剩哪些 D-Bus 泄漏
+A	de74542	2020-11-07	Josh Lehan	Adding new feature of core PID loop logging	16	533	13	546	2	14	0	可观测性	日志埋进控制回路（ec::pid 增加 name），10Hz 内做 I/O	I/O 代价与开关策略；日志字段如何支撑现场调参
+B	a788899	2018-02-27	Brad Bishop	Initial commit	2	202	0	202	2	0	0	起点	仅 LICENSE+README 空壳，时间线锚点	无
+B	391b8b0	2018-03-08	Patrick Venture	The OEM IPMI interface for status	3	271	0	271	3	0	0	外部控制面	IPMI 手动模式接口，读接口即可	手动模式的优先级与退出条件
+B	5e92909	2018-06-08	Patrick Venture	sensors: split building from manager object	8	308	237	545	4	4	0	分层	sensors 构造/运行分离，与 A2 同构	与 pid builder 的拆分是否对称
+B	5f59c0f	2018-11-11	Patrick Venture	Move all floats to doubles	29	167	184	351	0	29	0	精度	float 全换 double，29 文件机械替换	为何此时换，精度是否真的不足
+B	36b7d8e	2018-10-05	James Feist	[dbus-passive] Add threshold fan failure	11	287	3	290	0	11	0	监控语义	风扇失效阈值判定，A8 的前置	阈值从哪来，板级差异如何配
+B	5426c34	2019-02-11	Patrick Venture	add json verification for configurations	5	250	1	251	3	2	0	配置校验	JSON schema 校验，配合 A4 读	校验覆盖到语义层还是仅结构
+B	7442c37	2019-02-11	Patrick Venture	conf change: pid: all pid details are now camelCase	10	141	134	275	0	10	0	配置契约	PID 配置字段全面 camelCase，改变外部契约	外部配置由谁维护，破坏性变更如何通知
+B	3f0f7bc	2023-02-13	Josh Lehan	Add MissingIsAcceptable feature to avoid failsafe	11	282	38	320	0	11	0	监控语义	MissingIsAcceptable，A8 的续篇	缺失可接受由谁声明，误配的后果
+B	92f9f3c	2023-11-07	Harvey Wu	Auto determine failsafe duty according sensor fail	6	100	73	173	0	6	0	failsafe	failsafe 占空比按传感器失效自动推导	终结硬编码 90% 的收益与风险
+B	6df8bb5	2024-11-27	James Zheng	Add failsafe logger for zones	19	388	4	392	6	13	0	可观测性	新增 failsafeloggers 子系统	与 A13 的日志是否重复，数据如何被使用
+B	aacd568	2022-12-20	Harvey Wu	meson: Remove autotools files and ignore patches	5	4	508	512	0	1	4	构建	删除 autotools（508 行）	迁移耗时与残留风险
+B	b1225b2	2022-10-28	Harvey.Wu	meson: Add meson and meson_option files	3	240	0	240	3	0	0	构建	引入 meson 与 meson_option	与 aacd568 成对读
+B	b2a20e3	2026-10-21	Palaniappan Arunachalam	refactor: migrate to lg2	9	127	93	220	0	9	0	日志	迁移到 lg2 结构化日志	结构化日志对现场诊断的实际影响
