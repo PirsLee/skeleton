@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>phosphor-pid-control · 数据模型</title>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --panel:#ffffff;
+    --ink:#0f172a;
+    --ink2:#334155;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --line2:#cbd5e1;
+    --accent:#2563eb;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:14px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1420px;margin:0 auto;padding:0 28px 80px}
+
+  /* ---------- header ---------- */
+  header.top{
+    padding:52px 0 28px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:28px;
+  }
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;
+  }
+  h1{
+    margin:10px 0 6px;font-size:30px;line-height:1.25;letter-spacing:-.02em;
+    font-weight:700;
+  }
+  h1 .sep{color:var(--line2);font-weight:300;margin:0 6px}
+  .sub{color:var(--muted);font-size:14px;max-width:900px}
+  .sub code{font-family:var(--mono);font-size:12.5px;background:#eef2f7;
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--ink2)}
+
+  /* ---------- stats ---------- */
+  .stats{
+    display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+    gap:12px;margin:24px 0 40px;
+  }
+  @media(max-width:900px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .stat{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;position:relative;overflow:hidden;
+  }
+  .stat::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:var(--bar,var(--accent));
+  }
+  .stat .n{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+  /* ---------- section ---------- */
+  section{margin-bottom:48px}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-n{
+    font-family:var(--mono);font-size:11px;color:var(--accent);
+    border:1px solid #bfdbfe;background:#eff6ff;border-radius:5px;
+    padding:1px 7px;font-weight:600;
+  }
+  .sec-t{font-size:18px;font-weight:650;letter-spacing:-.01em}
+  .sec-d{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:980px}
+
+  /* ---------- flow ---------- */
+  .flow{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px 22px;
+  }
+  .band{
+    display:grid;grid-template-columns:104px 1fr;gap:16px;
+    padding:13px 0;align-items:start;
+  }
+  .band + .band{border-top:1px dashed var(--line)}
+  .band-l{
+    font-size:11.5px;color:var(--muted);font-weight:600;
+    padding-top:5px;letter-spacing:.02em;
+  }
+  .band-v{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{
+    font-family:var(--mono);font-size:11.5px;line-height:1.5;
+    border:1px solid var(--line2);border-radius:6px;
+    padding:3px 9px;background:#fff;color:var(--ink2);white-space:nowrap;
+  }
+  .chip.src{background:#f8fafc;color:var(--muted)}
+  .chip.conf{border-color:#bae6fd;background:#f0f9ff;color:#0369a1}
+  .chip.algo{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+  .chip.rt{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
+  .chip.val{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
+  .chip.out{border-color:#fed7aa;background:#fff7ed;color:#c2410c}
+  .band-arrow{
+    display:grid;grid-template-columns:104px 1fr;gap:16px;height:18px;
+  }
+  .band-arrow span{
+    grid-column:2;font-size:10.5px;color:#94a3b8;font-family:var(--mono);
+    display:flex;align-items:center;gap:8px;
+  }
+  .band-arrow span::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    position:sticky;top:0;z-index:20;background:rgba(246,248,251,.94);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+    padding:12px 0 12px;margin-bottom:20px;
+  }
+  .tb-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .search{
+    position:relative;flex:1 1 300px;max-width:420px;
+  }
+  .search input{
+    width:100%;padding:8px 12px 8px 32px;border:1px solid var(--line2);
+    border-radius:8px;background:#fff;font-family:var(--sans);font-size:13px;
+    color:var(--ink);outline:none;
+  }
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .search::before{
+    content:"⌕";position:absolute;left:11px;top:50%;transform:translateY(-50%);
+    color:#94a3b8;font-size:15px;line-height:1;
+  }
+  .fbtn{
+    font-family:var(--sans);font-size:12px;border:1px solid var(--line2);
+    background:#fff;color:var(--ink2);border-radius:999px;padding:5px 12px;
+    cursor:pointer;white-space:nowrap;transition:.14s;
+  }
+  .fbtn:hover{border-color:#94a3b8}
+  .fbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .fbtn .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    margin-right:6px;vertical-align:1px;background:var(--c);
+  }
+  .fbtn.on .dot{background:#fff}
+  .tb-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .cnt{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .act{
+    font-size:12px;background:none;border:1px solid var(--line2);border-radius:7px;
+    padding:5px 10px;color:var(--ink2);cursor:pointer;font-family:var(--sans);
+  }
+  .act:hover{background:#fff;border-color:#94a3b8}
+
+  /* ---------- cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(510px,1fr));gap:14px}
+  @media(max-width:1100px){.grid{grid-template-columns:1fr}}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    overflow:hidden;transition:border-color .15s,box-shadow .15s;
+  }
+  .card:hover{border-color:var(--line2);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+  .card.hide{display:none}
+  .card.open{border-color:#c7d2fe;box-shadow:0 3px 14px rgba(37,99,235,.08)}
+  .card-h{
+    display:flex;align-items:flex-start;gap:10px;padding:14px 16px 10px;
+    cursor:pointer;user-select:none;
+  }
+  .card-h:hover{background:#fcfdff}
+  .cname{
+    font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);
+    letter-spacing:-.01em;word-break:break-word;flex:1;min-width:0;line-height:1.45;
+  }
+  .cname .ns{color:#94a3b8;font-weight:400}
+  .pill{
+    font-size:10.5px;font-weight:600;border-radius:5px;padding:2px 7px;
+    white-space:nowrap;flex:none;
+    background:color-mix(in srgb,var(--c) 10%,#fff);
+    color:var(--c);border:1px solid color-mix(in srgb,var(--c) 28%,#fff);
+  }
+  .card-meta{
+    padding:0 16px 10px;font-size:11.5px;color:var(--muted);
+    font-family:var(--mono);display:flex;flex-wrap:wrap;gap:10px;
+  }
+  .card-meta .sz{color:#94a3b8}
+  .card-d{padding:0 16px 12px;font-size:12.5px;color:var(--ink2);line-height:1.65}
+  .card-d code{font-family:var(--mono);font-size:11.5px;background:#f1f5f9;
+    border-radius:3px;padding:0 4px;color:#0f172a}
+  table.f{width:100%;border-collapse:collapse;font-size:12px}
+  table.f th{
+    text-align:left;font-weight:600;color:var(--muted);font-size:10.5px;
+    letter-spacing:.04em;padding:6px 16px;background:#f8fafc;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  table.f th:last-child,table.f th:nth-child(3){text-align:right}
+  table.f th:last-child{text-align:left}
+  table.f td{
+    padding:6px 16px;border-bottom:1px solid #f1f5f9;vertical-align:top;
+    line-height:1.55;
+  }
+  table.f tr:last-child td{border-bottom:0}
+  td.fn{font-family:var(--mono);font-size:11.5px;color:#0f172a;white-space:nowrap}
+  td.ft{font-family:var(--mono);font-size:11px;color:#7c3aed;
+    overflow-wrap:anywhere;line-height:1.5}
+  td.fd{font-family:var(--mono);font-size:11px;color:#94a3b8;white-space:nowrap;text-align:right}
+  td.fnote{color:var(--ink2);font-size:11.5px}
+  tr.more{display:none}
+  .card.open tr.more{display:table-row}
+  .fold{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 16px;border-top:1px solid var(--line);background:#fcfdff;
+  }
+  .fold button{
+    background:none;border:0;color:var(--accent);font-size:11.5px;
+    font-family:var(--sans);cursor:pointer;padding:0;font-weight:500;
+  }
+  .fold .foot-note{font-size:11px;color:#94a3b8;font-family:var(--mono)}
+  .card.open .fold .exp{display:none}
+  .card:not(.open) .fold .col{display:none}
+
+  /* ---------- enum ---------- */
+  .egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .ecard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .ecard .en{font-family:var(--mono);font-size:13px;font-weight:600}
+  .ecard .ef{font-family:var(--mono);font-size:11px;color:#94a3b8;margin:2px 0 9px}
+  .evals{display:flex;flex-wrap:wrap;gap:6px}
+  .eval{
+    font-family:var(--mono);font-size:11.5px;border-radius:5px;padding:2px 8px;
+    background:#f8fafc;border:1px solid var(--line);color:var(--ink2);
+  }
+  .eval b{color:var(--accent);font-weight:600}
+  .ecard .ed{font-size:11.5px;color:var(--muted);margin-top:9px}
+
+  /* ---------- schema ---------- */
+  .tbl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .sch-h{
+    display:flex;align-items:baseline;gap:10px;padding:11px 16px;
+    border-bottom:1px solid var(--line);background:#f8fafc;
+  }
+  .sch-h code{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+  .sch-h span{font-size:11px;color:var(--muted)}
+  table.s{width:100%;border-collapse:collapse;font-size:12px}
+  table.s th{
+    text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);
+    letter-spacing:.04em;padding:7px 16px;border-bottom:1px solid var(--line);
+  }
+  table.s td{padding:6px 16px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  table.s tr:last-child td{border-bottom:0}
+  table.s td.k{font-family:var(--mono);font-size:11.5px;color:#0f172a;white-space:nowrap}
+  table.s td.k .ind{color:#cbd5e1}
+  table.s td.t{font-family:var(--mono);font-size:11px;color:#7c3aed;white-space:nowrap}
+  table.s td.m{font-family:var(--mono);font-size:11px;color:#0f766e;white-space:nowrap}
+  table.s td.r{font-size:11px;white-space:nowrap}
+  .req{color:#dc2626;font-weight:600}
+  .opt{color:#94a3b8}
+  .grow td{background:#fbfdff;font-weight:600;color:var(--ink2);font-size:11.5px}
+
+  /* ---------- dbus ---------- */
+  table.d{width:100%;border-collapse:collapse;font-size:12px}
+  table.d th{
+    text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);
+    letter-spacing:.04em;padding:8px 16px;border-bottom:1px solid var(--line);
+    background:#f8fafc;
+  }
+  table.d td{padding:8px 16px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  table.d tr:last-child td{border-bottom:0}
+  table.d td.i{font-family:var(--mono);font-size:11.5px;color:#0f172a;line-height:1.6}
+  table.d td.p{font-family:var(--mono);font-size:11px;color:var(--ink2);line-height:1.75}
+  .dir{
+    font-size:10.5px;font-weight:600;border-radius:4px;padding:1px 7px;
+    white-space:nowrap;
+  }
+  .dir.ex{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+  .dir.co{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+
+  /* ---------- misc ---------- */
+  .note{
+    background:#fffbeb;border:1px solid #fde68a;border-radius:9px;
+    padding:12px 16px;font-size:12.5px;color:#78350f;margin-top:16px;
+  }
+  .note b{color:#92400e}
+  .empty{
+    display:none;padding:40px;text-align:center;color:var(--muted);font-size:13px;
+    background:var(--panel);border:1px dashed var(--line2);border-radius:10px;
+  }
+  footer{
+    margin-top:60px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:11.5px;color:#94a3b8;display:flex;flex-wrap:wrap;gap:6px 18px;
+    font-family:var(--mono);
+  }
+  mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Data Model Inventory</div>
+  <h1>phosphor-pid-control <span class="sep">/</span> 数据模型</h1>
+  <p class="sub">
+    仅覆盖该代码库中的<strong>数据模型</strong>：配置结构体、算法状态、值/缓存、运行时实体、枚举、IPMI 线格式与对外的
+    D-Bus 契约。不含控制流程、线程模型与调用关系。
+  </p>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<!-- ================= 1. 全景 ================= -->
+<section>
+  <div class="sec-h"><span class="sec-n">01</span><span class="sec-t">模型全景与数据流向</span></div>
+  <p class="sec-d">
+    数据从「配置文件 / entity-manager / sysfs」进入，被解析成 <code>conf::</code> 系列只读配置结构体，
+    再与 <code>ec::</code> 算法参数一起构建出运行时实体；运行时实体持有「值/缓存」模型，最终通过 D-Bus、sysfs 与 IPMI 输出。
+  </p>
+
+  <div class="flow">
+    <div class="band">
+      <div class="band-l">输入来源</div>
+      <div class="band-v">
+        <span class="chip src">config.json（swampd --conf）</span>
+        <span class="chip src">entity-manager D-Bus 配置</span>
+        <span class="chip src">hwmon / sysfs</span>
+        <span class="chip src">xyz.openbmc_project.Sensor.Value</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>parse / from_json / validateJson</span></div>
+    <div class="band">
+      <div class="band-l">配置模型</div>
+      <div class="band-v">
+        <span class="chip conf">conf::SensorConfig</span>
+        <span class="chip conf">conf::SensorInput</span>
+        <span class="chip conf">conf::ControllerInfo</span>
+        <span class="chip conf">conf::CycleTime</span>
+        <span class="chip conf">conf::ZoneConfig</span>
+        <span class="chip conf">conf::PIDConf</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>buildSensorsFromJson / buildPIDsFromJson / initializePIDStruct</span></div>
+    <div class="band">
+      <div class="band-l">算法参数</div>
+      <div class="band-v">
+        <span class="chip algo">ec::pidinfo</span>
+        <span class="chip algo">ec::pid_info_t</span>
+        <span class="chip algo">ec::limits_t</span>
+        <span class="chip algo">ec::StepwiseInfo</span>
+        <span class="chip algo">ec::PidCoreContext</span>
+        <span class="chip algo">ec::PidCoreLog</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>构造</span></div>
+    <div class="band">
+      <div class="band-l">运行时实体</div>
+      <div class="band-v">
+        <span class="chip rt">DbusPidZone</span>
+        <span class="chip rt">SensorManager</span>
+        <span class="chip rt">Sensor / PluggableSensor / HostSensor</span>
+        <span class="chip rt">PIDController / FanController / ThermalController / StepwiseController</span>
+        <span class="chip rt">DbusPassive / DbusPassiveRedundancy</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>读 / 写 / 缓存</span></div>
+    <div class="band">
+      <div class="band-l">值模型</div>
+      <div class="band-v">
+        <span class="chip val">ReadReturn</span>
+        <span class="chip val">ValueCacheEntry</span>
+        <span class="chip val">SensorProperties</span>
+        <span class="chip val">SensorThresholds</span>
+        <span class="chip val">FailSafeSensorsMap</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>输出</span></div>
+    <div class="band">
+      <div class="band-l">对外出口</div>
+      <div class="band-v">
+        <span class="chip out">Control.Mode / Debug.Pid.Zone</span>
+        <span class="chip out">Debug.Pid.ThermalPower / Object.Enable</span>
+        <span class="chip out">Control.FanPwm · DbusWrite*</span>
+        <span class="chip out">SysFsWrite* · SysFsRead</span>
+        <span class="chip out">IPMI FanCtrlRequest*</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. 类型目录 ================= -->
+<section>
+  <div class="sec-h"><span class="sec-n">02</span><span class="sec-t">类型目录</span></div>
+  <p class="sec-d">
+    按职责分组的全部数据承载类型。点击任意卡片展开完整字段表；搜索框可匹配类型名、字段名、类型与说明。
+  </p>
+
+  <div class="toolbar">
+    <div class="tb-row">
+      <div class="search"><input id="q" type="search" placeholder="搜索类型 / 字段 / 说明…（按 / 聚焦）" autocomplete="off"></div>
+      <div id="cats" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="tb-right">
+        <span class="cnt" id="cnt"></span>
+        <button class="act" id="expandAll">全部展开</button>
+        <button class="act" id="collapseAll">全部收起</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">没有匹配的类型</div>
+</section>
+
+<!-- ================= 3. 枚举 ================= -->
+<section>
+  <div class="sec-h"><span class="sec-n">03</span><span class="sec-t">枚举与常量</span></div>
+  <p class="sec-d">代码中用于状态判别的小型封闭取值集合，决定了类型的路由分支。</p>
+  <div class="egrid" id="enums"></div>
+</section>
+
+<!-- ================= 4. JSON 配置模型 ================= -->
+<section>
+  <div class="sec-h"><span class="sec-n">04</span><span class="sec-t">配置输入模型（JSON → 结构体）</span></div>
+  <p class="sec-d">
+    <code>config.json</code> 的键到 C++ 结构体字段的映射。<span class="req">*</span> 为解析器强制要求，
+    <span class="opt">○</span> 为可选并给出缺省值。
+  </p>
+
+  <div class="tbl-wrap" style="margin-bottom:14px">
+    <div class="sch-h"><code>sensors[]</code><span>→ std::map&lt;std::string, conf::SensorConfig&gt;，键为 name</span></div>
+    <table class="s">
+      <thead><tr><th style="width:26%">JSON 键</th><th style="width:20%">类型</th><th style="width:10%">必填</th><th style="width:14%">默认</th><th>映射 / 语义</th></tr></thead>
+      <tbody>
+        <tr><td class="k">name</td><td class="t">string</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>map 键，同时被 zone 的 <code>inputs</code> 引用</td></tr>
+        <tr><td class="k">type</td><td class="t">string</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td><code>fan</code> / <code>temp</code> / <code>margin</code></td></tr>
+        <tr><td class="k">readPath</td><td class="t">string</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>决定读接口：<code>/extsensors/</code> → EXTERNAL，D-Bus → DBUSPASSIVE，<code>/sys/</code> → SYSFS</td></tr>
+        <tr><td class="k">writePath</td><td class="t">string</td><td class="r"><span class="opt">○</span></td><td class="m">""</td><td>仅 fan 使用；<code>/sys/</code> → SysFsWrite*，D-Bus 路径 → DbusWrite*</td></tr>
+        <tr><td class="k">min</td><td class="t">int64</td><td class="r"><span class="opt">○</span></td><td class="m">0</td><td>原始值下界；解析器对非 fan 类型忽略并告警</td></tr>
+        <tr><td class="k">max</td><td class="t">int64</td><td class="r"><span class="opt">○</span></td><td class="m">0</td><td>原始值上界；解析器对非 fan 类型忽略并告警</td></tr>
+        <tr><td class="k">timeout</td><td class="t">int64</td><td class="r"><span class="opt">○</span></td><td class="m">fan 0 / 其他 2</td><td>秒；0 表示不做超时检查（<code>Sensor::getDefaultTimeout</code>）</td></tr>
+        <tr><td class="k">ignoreDbusMinMax</td><td class="t">bool</td><td class="r"><span class="opt">○</span></td><td class="m">false</td><td>忽略 D-Bus 上报的 MinValue/MaxValue，只用配置值</td></tr>
+        <tr><td class="k">unavailableAsFailed</td><td class="t">bool</td><td class="r"><span class="opt">○</span></td><td class="m">true</td><td>Availability=Unavailable 视作故障</td></tr>
+        <tr><td class="k">ignoreFailIfHostOff</td><td class="t">bool</td><td class="r"><span class="opt">○</span></td><td class="m">false</td><td>主机下电期间不判定该传感器故障</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tbl-wrap" style="margin-bottom:14px">
+    <div class="sch-h"><code>zones[]</code><span>→ std::map&lt;int64_t, conf::ZoneConfig&gt; + std::map&lt;int64_t, conf::PIDConf&gt;，键为 id</span></div>
+    <table class="s">
+      <thead><tr><th style="width:26%">JSON 键</th><th style="width:20%">类型</th><th style="width:10%">必填</th><th style="width:14%">默认</th><th>映射 / 语义</th></tr></thead>
+      <tbody>
+        <tr><td class="k">id</td><td class="t">int64</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>zone 标识，同时出现在 D-Bus 对象路径与日志文件名</td></tr>
+        <tr><td class="k">minThermalOutput</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>ZoneConfig.minThermalOutput，热控输出下限（通常为 RPM）</td></tr>
+        <tr><td class="k">failsafePercent</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>ZoneConfig.failsafePercent，整区失效保护百分比</td></tr>
+        <tr><td class="k">cycleIntervalTimeMS</td><td class="t">uint64</td><td class="r"><span class="opt">○</span></td><td class="m">100</td><td>主循环周期；&lt;1 时回退默认并告警</td></tr>
+        <tr><td class="k">updateThermalsTimeMS</td><td class="t">uint64</td><td class="r"><span class="opt">○</span></td><td class="m">1000</td><td>热传感器刷新周期；&lt;1 时回退默认并告警</td></tr>
+        <tr><td class="k">accumulateSetPoint</td><td class="t">bool</td><td class="r"><span class="opt">○</span></td><td class="m">false</td><td>同一传感器的多个控制器输出 PWM 累加</td></tr>
+        <tr><td class="k">pids</td><td class="t">array</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>PIDConf，键为 pid 的 name；重名会告警并覆盖</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tbl-wrap" style="margin-bottom:14px">
+    <div class="sch-h"><code>zones[].pids[]</code><span>→ conf::ControllerInfo</span></div>
+    <table class="s">
+      <thead><tr><th style="width:26%">JSON 键</th><th style="width:20%">类型</th><th style="width:10%">必填</th><th style="width:14%">默认</th><th>映射 / 语义</th></tr></thead>
+      <tbody>
+        <tr><td class="k">name</td><td class="t">string</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>PIDConf 键</td></tr>
+        <tr><td class="k">type</td><td class="t">string</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td><code>fan</code> / <code>margin</code> / <code>absolute</code> / <code>summation</code> / <code>stepwise</code></td></tr>
+        <tr><td class="k">inputs</td><td class="t">string[]</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>被引用传感器名，经 <code>spliceInputs</code> 合并为 SensorInput[]</td></tr>
+        <tr><td class="k">setpoint</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>初始目标值</td></tr>
+        <tr><td class="k">tempToMargin</td><td class="t">double[]</td><td class="r"><span class="opt">○</span></td><td class="m">空</td><td>与 inputs 同序；非 0 位置开启温度→margin 转换</td></tr>
+        <tr><td class="k">missingIsAcceptable</td><td class="t">string[]</td><td class="r"><span class="opt">○</span></td><td class="m">空</td><td>命中名单的输入缺失时不进入失效保护</td></tr>
+        <tr><td class="k">FailSafePercent</td><td class="t">double</td><td class="r"><span class="opt">○</span></td><td class="m">0</td><td>该 PID 的失效保护百分比（键名首字母大写）</td></tr>
+        <tr><td class="k">pid.samplePeriod</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>→ ts，采样周期（秒）</td></tr>
+        <tr><td class="k">pid.proportionalCoeff<br>pid.integralCoeff<br>pid.feedFwdOffsetCoeff<br>pid.feedFwdGainCoeff</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>P / I / 前馈偏置 / 前馈增益</td></tr>
+        <tr><td class="k">pid.integralLimit_min<br>pid.integralLimit_max</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>→ integralLimit.min / .max</td></tr>
+        <tr><td class="k">pid.outLim_min<br>pid.outLim_max</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>→ outLim.min / .max</td></tr>
+        <tr><td class="k">pid.slewNeg<br>pid.slewPos</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>输出变化率限幅（负 / 正）</td></tr>
+        <tr><td class="k">pid.derivativeCoeff</td><td class="t">double</td><td class="r"><span class="opt">○</span></td><td class="m">0</td><td>D 项；为兼容旧配置而设为可选</td></tr>
+        <tr><td class="k">pid.positiveHysteresis<br>pid.negativeHysteresis</td><td class="t">double</td><td class="r"><span class="opt">○</span></td><td class="m">0</td><td>回差，避免在阈值附近抖动</td></tr>
+        <tr><td class="k">pid.checkHysteresisWithSetpoint</td><td class="t">bool</td><td class="r"><span class="opt">○</span></td><td class="m">false</td><td>回差比较基准用 setpoint 而非上次输入</td></tr>
+        <tr class="grow"><td colspan="5">type == "stepwise" 时改走分段模型</td></tr>
+        <tr><td class="k">pid.samplePeriod</td><td class="t">double</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>→ StepwiseInfo.ts</td></tr>
+        <tr><td class="k">pid.isCeiling</td><td class="t">bool</td><td class="r"><span class="req">*</span></td><td class="m">—</td><td>是否作为上限包络</td></tr>
+        <tr><td class="k">pid.reading.{0..19}</td><td class="t">object</td><td class="r"><span class="opt">○</span></td><td class="m">NaN</td><td>分段折线 X 轴，最多 20 点</td></tr>
+        <tr><td class="k">pid.output.{0..19}</td><td class="t">object</td><td class="r"><span class="opt">○</span></td><td class="m">NaN</td><td>分段折线 Y 轴，最多 20 点</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>另一条输入路径：</b>当配置文件不存在时，同一批结构体由 <code>dbus_configuration::init()</code> 从
+    entity-manager 的 <code>xyz.openbmc_project.Configuration.Pid</code> / <code>Pid.Zone</code> / <code>Stepwise</code>
+    对象填充，键名与 JSON 不完全相同但语义对应；因此 <code>conf::</code> 是两份来源的<strong>统一中间模型</strong>。
+  </div>
+</section>
+
+<!-- ================= 5. D-Bus 契约 ================= -->
+<section>
+  <div class="sec-h"><span class="sec-n">05</span><span class="sec-t">D-Bus 契约模型</span></div>
+  <p class="sec-d">进程边界上的数据模型：本仓库实现（暴露）与依赖（消费）的接口属性。</p>
+  <div class="tbl-wrap">
+    <table class="d">
+      <thead><tr><th style="width:9%">方向</th><th style="width:30%">接口</th><th style="width:38%">属性</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dir ex">暴露</span></td><td class="i">xyz.openbmc_project.Control.Mode</td><td class="p">Manual : bool（读写）<br>FailSafe : bool（只读语义）</td><td>每个 zone 一个对象；手动/自动模式、失效保护状态</td></tr>
+        <tr><td><span class="dir ex">暴露</span></td><td class="i">xyz.openbmc_project.Debug.Pid.Zone</td><td class="p">Leader : string（只读）</td><td>当前主导风扇的 thermal/power PID 名称</td></tr>
+        <tr><td><span class="dir ex">暴露</span></td><td class="i">xyz.openbmc_project.Debug.Pid.ThermalPower</td><td class="p">Leader : string<br>ClassType : string<br>Setpoint : double<br>Input : double<br>Output : double</td><td>每个 PID 进程对象一个；用于调试与观测热控回路</td></tr>
+        <tr><td><span class="dir ex">暴露</span></td><td class="i">xyz.openbmc_project.Object.Enable</td><td class="p">Enabled : bool</td><td>每个 PID 进程对象的启用开关</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.Sensor.Value</td><td class="p">Value : double<br>MaxValue / MinValue : double<br>Unit : string</td><td>被动传感器来源；填入 SensorProperties</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.Sensor.Threshold.Warning<br>…Threshold.Critical</td><td class="p">WarningHigh / WarningLow / CriticalHigh / CriticalLow</td><td>阈值断言状态参与故障判定（<code>thresholdsAsserted</code>）</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.State.Decorator.Availability</td><td class="p">Available : bool</td><td>映射到 <code>_available</code>，可按配置视为故障</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.Control.FanRedundancy</td><td class="p">Status : enum{Full,Degraded,Failed}<br>Collection : object_path[]<br>AllowedFailures : byte</td><td>失效集合中的风扇被标记为 failed</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.State.Host</td><td class="p">CurrentHostState : enum</td><td><code>HostStateMonitor.powerStatusOn</code> 的来源</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.Control.Mode<br>xyz.openbmc_project.Object.Enable</td><td class="p">Manual : bool<br>Enabled : bool</td><td>IPMI 命令（getControlState / setControlState）读写 zone 状态</td></tr>
+        <tr><td><span class="dir co">消费</span></td><td class="i">xyz.openbmc_project.Control.FanPwm</td><td class="p">Target : uint64（0–255）</td><td>写风扇 PWM 的目标接口</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <span>source: phosphor-pid-control</span>
+  <span id="fstat"></span>
+  <span>scope: 仅数据模型</span>
+</footer>
+
+</div>
+
+<script>
+/* ============================ 分类 ============================ */
+const CATS = {
+  config : {label:'配置模型',  color:'#0ea5e9'},
+  algo   : {label:'算法状态',  color:'#2563eb'},
+  value  : {label:'值 / 缓存', color:'#10b981'},
+  runtime: {label:'运行时实体', color:'#8b5cf6'},
+  io     : {label:'I/O 适配',  color:'#f59e0b'},
+  enum   : {label:'枚举',      color:'#f43f5e'},
+  wire   : {label:'线格式',    color:'#0f766e'},
+  alias  : {label:'类型别名',  color:'#64748b'},
+  error  : {label:'异常模型',  color:'#ef4444'}
+};
+
+/* ============================ 模型 ============================ */
+/* fields: [名称, 类型, 默认值, 说明] */
+const MODELS = [
+/* ---------------- 配置模型 ---------------- */
+{
+  name:'conf::SensorConfig', cat:'config', file:'conf.hpp:22', inherits:'',
+  desc:'单个传感器的配置。JSON 的 <code>sensors[]</code> 元素；<code>readPath</code>/<code>writePath</code> 共同决定构建哪种 I/O 适配器。',
+  fields:[
+    ['type','std::string','""','fan / temp / margin；决定读取语义与默认超时'],
+    ['readPath','std::string','""','D-Bus 对象路径或 sysfs 路径'],
+    ['writePath','std::string','""','写路径，仅 fan 类型使用'],
+    ['min','int64_t','0','原始值下界（仅 fan 生效）'],
+    ['max','int64_t','0','原始值上界（仅 fan 生效）'],
+    ['timeout','int64_t','fan 0 / 其他 2','秒；0 表示不检查超时'],
+    ['ignoreDbusMinMax','bool','false','忽略 D-Bus 上报的 Min/MaxValue'],
+    ['unavailableAsFailed','bool','true','Availability=Unavailable 视作故障'],
+    ['ignoreFailIfHostOff','bool','false','主机下电时不判故障']
+  ]
+},
+{
+  name:'conf::SensorInput', cat:'config', file:'conf.hpp:44', inherits:'',
+  desc:'PID 输入端的「传感器引用 + 装饰信息」。来自 PID 配置而非 <code>SensorConfig</code>，以便对 entity-manager 动态传感器同样生效。',
+  fields:[
+    ['name','std::string','""','引用的传感器名'],
+    ['convertMarginZero','double','NaN','margin 归一化零点'],
+    ['convertTempToMargin','bool','false','把温度值转成 margin 值'],
+    ['missingIsAcceptable','bool','false','该输入缺失时允许继续运行']
+  ]
+},
+{
+  name:'conf::ControllerInfo', cat:'config', file:'conf.hpp:57', inherits:'',
+  desc:'单个 PID 控制器的完整配置。<code>pidInfo</code> 与 <code>stepwiseInfo</code> 二者按 <code>type</code> 择一有效。',
+  fields:[
+    ['type','std::string','""','fan / margin / absolute / summation / stepwise'],
+    ['inputs','std::vector<SensorInput>','[]','一个或多个输入传感器'],
+    ['setpoint','double','0','初始目标值'],
+    ['pidInfo','ec::pidinfo','零值','PID 系数与限幅'],
+    ['stepwiseInfo','ec::StepwiseInfo','零值','分段折线模型（type=stepwise 时）'],
+    ['failSafePercent','double','0','该 PID 的失效保护百分比']
+  ]
+},
+{
+  name:'conf::CycleTime', cat:'config', file:'conf.hpp:70', inherits:'',
+  desc:'zone 的时间节拍配置，被 <code>DbusPidZone</code> 按值持有。',
+  fields:[
+    ['cycleIntervalTimeMS','uint64_t','100','主循环周期（毫秒）'],
+    ['updateThermalsTimeMS','uint64_t','1000','热传感器刷新周期（毫秒）']
+  ]
+},
+{
+  name:'conf::ZoneConfig', cat:'config', file:'conf.hpp:82', inherits:'',
+  desc:'zone 级别的配置（不含各 PID 细节），与 <code>PIDConf</code> 分开存放。',
+  fields:[
+    ['minThermalOutput','double','0','热控输出下限（通常 RPM）'],
+    ['failsafePercent','double','0','整区失效保护百分比'],
+    ['cycleTime','conf::CycleTime','100 / 1000','循环节拍'],
+    ['accumulateSetPoint','bool','false','同传感器多控制器输出累加']
+  ]
+},
+{
+  name:'conf::PIDConf', cat:'alias', file:'conf.hpp:97', inherits:'',
+  desc:'一个 zone 内的 PID 名索引：<code>std::map&lt;std::string, ControllerInfo&gt;</code>。',
+  fields:[
+    ['key','std::string','—','PID 名称'],
+    ['value','conf::ControllerInfo','—','该 PID 的配置']
+  ]
+},
+
+/* ---------------- 算法状态 ---------------- */
+{
+  name:'ec::limits_t', cat:'algo', file:'pid/ec/pid.hpp:13', inherits:'',
+  desc:'闭区间限幅值对，用于积分限幅与输出限幅。',
+  fields:[
+    ['min','double','0.0','下界'],
+    ['max','double','0.0','上界']
+  ]
+},
+{
+  name:'ec::pidinfo', cat:'algo', file:'pid/ec/pid.hpp:48', inherits:'',
+  desc:'「配置形态」的 PID 参数（不含运行时累计量），由 JSON/DBus 配置填充，再经 <code>initializePIDStruct</code> 展开成 <code>pid_info_t</code>。',
+  fields:[
+    ['checkHysterWithSetpt','bool','false','回差比较基准用 setpoint'],
+    ['ts','double','0.0','采样周期（秒）'],
+    ['proportionalCoeff','double','0.0','P 系数'],
+    ['integralCoeff','double','0.0','I 系数'],
+    ['derivativeCoeff','double','0.0','D 系数'],
+    ['feedFwdOffset','double','0.0','前馈偏置'],
+    ['feedFwdGain','double','0.0','前馈增益'],
+    ['integralLimit','ec::limits_t','0 / 0','积分限幅'],
+    ['outLim','ec::limits_t','0 / 0','输出限幅'],
+    ['slewNeg','double','0.0','输出下降速率限制'],
+    ['slewPos','double','0.0','输出上升速率限制'],
+    ['positiveHysteresis','double','0.0','正回差'],
+    ['negativeHysteresis','double','0.0','负回差']
+  ]
+},
+{
+  name:'ec::pid_info_t', cat:'algo', file:'pid/ec/pid.hpp:21', inherits:'',
+  desc:'PID 循环的<strong>运行时状态</strong>：在 <code>pidinfo</code> 之上增加了积分累计、上次误差/输出、初始化标志等可变字段。每个 <code>PIDController</code> 各持一份。',
+  fields:[
+    ['initialized','bool','false','是否已完成首次初始化'],
+    ['checkHysterWithSetpt','bool','false','回差比较基准'],
+    ['ts','double','0.0','采样周期（秒）'],
+    ['integral','double','0.0','积分累计值'],
+    ['lastOutput','double','0.0','上一次输出'],
+    ['lastError','double','0.0','上一次误差'],
+    ['proportionalCoeff','double','0.0','P 系数'],
+    ['integralCoeff','double','0.0','I 系数'],
+    ['derivativeCoeff','double','0.0','D 系数'],
+    ['feedFwdOffset','double','0.0','前馈偏置'],
+    ['feedFwdGain','double','0.0','前馈增益'],
+    ['integralLimit','ec::limits_t','0 / 0','积分限幅'],
+    ['outLim','ec::limits_t','0 / 0','输出限幅'],
+    ['slewNeg','double','0.0','输出下降速率限制'],
+    ['slewPos','double','0.0','输出上升速率限制'],
+    ['positiveHysteresis','double','0.0','正回差'],
+    ['negativeHysteresis','double','0.0','负回差']
+  ]
+},
+{
+  name:'ec::StepwiseInfo', cat:'algo', file:'pid/ec/stepwise.hpp:24', inherits:'',
+  desc:'分段折线（查表）控制模型：X 轴 <code>reading</code>、Y 轴 <code>output</code> 最多 <code>maxStepwisePoints = 20</code> 个点，未配置的点为 NaN。',
+  fields:[
+    ['ts','double','未初始化','采样周期（秒）'],
+    ['reading','double[20]','全 NaN','折线 X 轴采样点'],
+    ['output','double[20]','全 NaN','折线 Y 轴输出点'],
+    ['positiveHysteresis','double','0.0','正回差'],
+    ['negativeHysteresis','double','0.0','负回差'],
+    ['isCeiling','bool','未初始化','是否作为上限包络']
+  ]
+},
+{
+  name:'ec::PidCoreContext', cat:'algo', file:'pid/ec/logging.hpp:17', inherits:'',
+  desc:'一次 PID 计算的中间量快照，仅用于核心日志。默认 <code>operator==</code>，可用于「值未变化则不落盘」的判定。',
+  fields:[
+    ['input','double','—','输入值'],
+    ['setpoint','double','—','目标值'],
+    ['error','double','—','误差'],
+    ['proportionalTerm','double','—','P 项'],
+    ['integralTerm1','double','—','I 项（限幅前）'],
+    ['integralTerm2','double','—','I 项（限幅后）'],
+    ['derivativeTerm','double','—','D 项'],
+    ['feedFwdTerm','double','—','前馈项'],
+    ['output1','double','—','限幅前输出'],
+    ['output2','double','—','积分限幅后输出'],
+    ['minOut','double','—','输出下限'],
+    ['maxOut','double','—','输出上限'],
+    ['integralTerm3','double','—','回差处理后 I 项'],
+    ['output3','double','—','回差处理后输出'],
+    ['integralTerm','double','—','最终 I 项'],
+    ['output','double','—','最终输出']
+  ]
+},
+{
+  name:'ec::PidCoreLog', cat:'algo', file:'pid/ec/logging.hpp:41', inherits:'',
+  desc:'核心日志的持有者（文件名、两个文件流、上次落盘时间与上次上下文）。可移动不可拷贝，仅在未移动时关闭文件。',
+  fields:[
+    ['nameOriginal','std::string','""','原始 PID 名'],
+    ['nameClean','std::string','""','净化后的文件名用名'],
+    ['fileContext','std::ofstream','—','上下文日志流'],
+    ['fileCoeffs','std::ofstream','—','系数日志流'],
+    ['lastLog','std::chrono::milliseconds','0','上次落盘时间戳'],
+    ['lastContext','ec::PidCoreContext','零值','上次落盘的上下文'],
+    ['moved','bool','false','所有权已转移标志']
+  ]
+},
+
+/* ---------------- 值 / 缓存 ---------------- */
+{
+  name:'ReadReturn', cat:'value', file:'interfaces.hpp:14', inherits:'',
+  desc:'一次传感器读取的结果值对象：同时携带归一化值与原始值，以及这次读取的时间戳（用于超时判定）。',
+  fields:[
+    ['value','double','NaN','归一化后的值'],
+    ['updated','high_resolution_clock::time_point','epoch','本次读取时间'],
+    ['unscaled','double','= value','未经缩放的原始值']
+  ]
+},
+{
+  name:'ValueCacheEntry', cat:'value', file:'interfaces.hpp:25', inherits:'',
+  desc:'zone 每轮循环缓存的一份传感器值：<code>scaled</code> 归一化到 (0,1)，<code>unscaled</code> 保留原始量纲。',
+  fields:[
+    ['scaled','double','—','按配置 min/max 归一化到 (0.0, 1.0)'],
+    ['unscaled','double','—','输入/输出传感器的原始值']
+  ]
+},
+{
+  name:'SensorProperties', cat:'value', file:'dbus/dbushelper_interface.hpp:11', inherits:'',
+  desc:'从 D-Bus <code>xyz.openbmc_project.Sensor.Value</code> 抓取的一组属性，是「远端传感器描述」的本地投影。',
+  fields:[
+    ['scale','int64_t','0','缩放指数'],
+    ['value','double','0.0','当前值'],
+    ['min','double','0.0','MinValue'],
+    ['max','double','0.0','MaxValue'],
+    ['unit','std::string','""','单位字符串'],
+    ['available','bool','false','Availability.Available'],
+    ['unavailableAsFailed','bool','false','不可用是否算故障']
+  ]
+},
+{
+  name:'SensorThresholds', cat:'value', file:'util.hpp', inherits:'',
+  desc:'传感器阈值对，未设置时为 NaN。',
+  fields:[
+    ['lowerThreshold','double','NaN','下阈值'],
+    ['upperThreshold','double','NaN','上阈值']
+  ]
+},
+{
+  name:'FailSafeSensorsMap', cat:'alias', file:'pid/zone.hpp:51', inherits:'',
+  desc:'失效保护传感器集合：<code>std::map&lt;std::string, std::pair&lt;std::string, double&gt;&gt;</code>，即 传感器名 → (故障原因, 失效保护百分比)。<code>FailSafeSensorPair</code> 是它的单元素形态。',
+  fields:[
+    ['key','std::string','—','传感器名'],
+    ['value.first','std::string','—','故障原因文本（如 "Sensor timeout"）'],
+    ['value.second','double','—','该传感器对应的失效保护百分比']
+  ]
+},
+
+/* ---------------- 运行时实体 ---------------- */
+{
+  name:'Sensor', cat:'runtime', file:'sensors/sensor.hpp:13', inherits:'',
+  desc:'所有传感器的抽象基类，同时也是最小传感器数据模型：身份、超时策略与「主机下电忽略」开关。',
+  fields:[
+    ['_name','std::string','""','传感器名（全局唯一，用作 map 键）'],
+    ['_timeout','int64_t','—','超时秒数；0 表示不检查'],
+    ['_ignoreFailIfHostOff','bool','false','主机下电时不判故障']
+  ]
+},
+{
+  name:'PluggableSensor', cat:'runtime', file:'sensors/pluggable.hpp:17', inherits:'Sensor',
+  desc:'把「读策略」与「写策略」组合成一个传感器实体；数据模型的核心是把 I/O 行为抽象成两个可替换的依赖。',
+  fields:[
+    ['_reader','std::unique_ptr<ReadInterface>','—','读策略（DbusPassive / SysFsRead / HostSensor…）'],
+    ['_writer','std::unique_ptr<WriteInterface>','—','写策略（DbusWrite* / SysFsWrite*）']
+  ]
+},
+{
+  name:'HostSensor', cat:'runtime', file:'sensors/host.hpp:22', inherits:'Sensor + Sensor.Value 服务对象',
+  desc:'由本进程自己托管并在 D-Bus 上发布的传感器（<code>/xyz/openbmc_project/extsensors/</code>），值由外部写入。',
+  fields:[
+    ['_lock','std::mutex','—','保护值更新的互斥量'],
+    ['_updated','high_resolution_clock::time_point','epoch','上次写入时间'],
+    ['_value','double','0','当前值']
+  ]
+},
+{
+  name:'SensorManager', cat:'runtime', file:'sensors/manager.hpp:22', inherits:'',
+  desc:'跨 zone 的全局传感器仓库：按名字索引对象，并按类型维护名字列表。持有两条总线引用（被动监听总线与 host 传感器总线）。',
+  fields:[
+    ['_sensorMap','std::map<std::string, std::unique_ptr<Sensor>>','—','名字 → 传感器实例'],
+    ['_sensorTypeList','std::map<std::string, std::vector<std::string>>','—','类型 → 名字列表'],
+    ['_passiveListeningBus','std::reference_wrapper<sdbusplus::bus_t>','—','被动监听总线'],
+    ['_hostSensorBus','std::reference_wrapper<sdbusplus::bus_t>','—','host 传感器总线'],
+    ['SensorRoot','static constexpr char[]','"/xyz/openbmc_project/extsensors"','自托管传感器根路径']
+  ]
+},
+{
+  name:'PIDController', cat:'runtime', file:'pid/pidcontroller.hpp:16', inherits:'Controller',
+  desc:'PID 控制器基类。数据上可分为「配置来的 PID 状态」与「每轮更新的一次输入/目标值」。',
+  fields:[
+    ['_owner','ZoneInterface*','—','所属 zone（反向引用）'],
+    ['_id','std::string','""','控制器名称'],
+    ['_pid_info','ec::pid_info_t','零值','PID 运行时状态'],
+    ['_setpoint','double','0','当前目标值'],
+    ['lastInput','double','NaN','上一次输入值']
+  ]
+},
+{
+  name:'FanController', cat:'runtime', file:'pid/fancontroller.hpp', inherits:'PIDController',
+  desc:'风扇 PID：多输入求和/取大，输出 PWM 百分比，并跟踪方向与失效保护状态跃迁。',
+  fields:[
+    ['_inputs','std::vector<std::string>','[]','输入传感器名'],
+    ['_direction','FanSpeedDirection','NEUTRAL','风扇方向（影响取值方式）'],
+    ['failsafeTransition','bool','true','是否处于失效保护切换中'],
+    ['failsafePrevState','bool','false','上一次失效保护状态']
+  ]
+},
+{
+  name:'ThermalController', cat:'runtime', file:'pid/thermalcontroller.hpp', inherits:'PIDController',
+  desc:'热控 PID：输入是带装饰信息的传感器引用，按 <code>ThermalType</code> 决定聚合方式。',
+  fields:[
+    ['_inputs','std::vector<conf::SensorInput>','[]','带 margin/缺失策略的输入'],
+    ['type','ThermalType','margin','margin / absolute / summation']
+  ]
+},
+{
+  name:'StepwiseController', cat:'runtime', file:'pid/stepwisecontroller.hpp', inherits:'Controller',
+  desc:'分段折线控制器：不走 PID 公式，直接用 <code>StepwiseInfo</code> 查表得出输出。',
+  fields:[
+    ['_owner','ZoneInterface*','—','所属 zone'],
+    ['_stepwise_info','ec::StepwiseInfo','零值','折线模型'],
+    ['_id','std::string','""','控制器名称'],
+    ['_inputs','std::vector<std::string>','[]','输入传感器名'],
+    ['lastInput','double','NaN','上一次输入'],
+    ['lastOutput','double','NaN','上一次输出']
+  ]
+},
+{
+  name:'DbusPidZone', cat:'runtime', file:'pid/zone.hpp:57', inherits:'ZoneInterface + Control.Mode 服务对象',
+  desc:'整个 zone 的聚合根：既是 D-Bus 对象（Mode / Debug.Pid.Zone），又是所有 PID 与传感器缓存的持有者。这是仓库中字段最多的数据模型。',
+  fields:[
+    ['_log','std::ofstream','—','zone 日志文件流'],
+    ['_zoneId','const int64_t','—','zone 标识'],
+    ['_maximumSetPoint','double','0','内部计算出的最大 setpoint'],
+    ['_maximumSetPointName','std::string','""','当前 setpoint 的属主 PID'],
+    ['_maximumSetPointNamePrev','std::string','""','上一轮属主（用于去抖/日志）'],
+    ['_manualMode','bool','false','手动模式'],
+    ['_redundantWrite','bool','false','是否需要冗余写'],
+    ['_accumulateSetPoint','bool','false','输出累加开关'],
+    ['_minThermalOutputSetPt','const double','—','热控输出下限'],
+    ['_zoneFailSafePercent','const double','—','整区失效保护百分比'],
+    ['_cycleTime','const conf::CycleTime','100 / 1000','循环节拍'],
+    ['_failSafeSensors','FailSafeSensorsMap','空','当前失效传感器集合'],
+    ['_missingAcceptable','std::set<std::string>','空','允许缺失的传感器'],
+    ['setPoints','std::map<std::string, double>','空','本轮各 PID 提交的 setpoint'],
+    ['rpmCeilings','std::vector<double>','空','RPM 上限集合'],
+    ['_fanInputs','std::vector<std::string>','[]','风扇输入名'],
+    ['_thermalInputs','std::vector<std::string>','[]','热输入名'],
+    ['_cachedValuesByName','std::map<std::string, ValueCacheEntry>','空','输入值缓存'],
+    ['_cachedFanOutputs','std::map<std::string, ValueCacheEntry>','空','风扇输出缓存（日志用）'],
+    ['_mgr','const SensorManager&','—','全局传感器仓库'],
+    ['_fans','std::vector<std::unique_ptr<Controller>>','空','风扇控制器'],
+    ['_thermals','std::vector<std::unique_ptr<Controller>>','空','热控控制器'],
+    ['_pidsControlProcess','std::map<std::string, std::unique_ptr<ProcessObject>>','空','每个 PID 的 Enable 对象'],
+    ['_sensorFailSafePercent','std::map<std::string, double>','空','按传感器的失效保护百分比']
+  ]
+},
+{
+  name:'DbusPassive', cat:'runtime', file:'dbus/dbuspassive.hpp:39', inherits:'ReadInterface',
+  desc:'被动 D-Bus 传感器：不主动轮询，而是靠 signal 更新。内部维护一份完整的状态机（值、量程、故障、可用性、各类类型标志）。',
+  fields:[
+    ['_signal','sdbusplus::bus::match_t','—','属性变更信号匹配器'],
+    ['_scale','int64_t','—','缩放指数'],
+    ['_id','std::string','""','调试标识'],
+    ['_helper','std::unique_ptr<DbusHelperInterface>','—','D-Bus 查询助手'],
+    ['_lock','std::mutex','—','保护值状态'],
+    ['_value','double','0','归一化值'],
+    ['_unscaled','double','0','原始值'],
+    ['_max','double','0','量程上限'],
+    ['_min','double','0','量程下限'],
+    ['_failed','bool','false','是否故障'],
+    ['_functional','bool','true','功能是否正常'],
+    ['_available','bool','true','Availability 状态'],
+    ['_availableOverridden','bool','false','可用性是否被配置覆盖'],
+    ['_unavailableAsFailed','bool','true','不可用是否算故障'],
+    ['_typeMargin','bool','false','是否 margin 类型'],
+    ['_typeFan','bool','false','是否 fan 类型'],
+    ['_badReading','bool','false','读数是否无效'],
+    ['_marginHot','bool','false','margin 是否偏热'],
+    ['_objectMissing','bool','false','D-Bus 对象是否缺失'],
+    ['path','std::string','""','对象路径'],
+    ['redundancy','std::shared_ptr<DbusPassiveRedundancy>','—','冗余状态来源'],
+    ['_updated','high_resolution_clock::time_point','epoch','上次刷新时间']
+  ]
+},
+{
+  name:'DbusPassiveRedundancy', cat:'runtime', file:'dbus/dbuspassiveredundancy.hpp:34', inherits:'',
+  desc:'风扇冗余监视：跟踪 <code>Control.FanRedundancy</code> 的 Status/Collection，把失败的集合展开成传感器名集合。',
+  fields:[
+    ['match','sdbusplus::bus::match_t','—','冗余接口变更信号'],
+    ['failed','std::set<std::string>','空','当前处于失败冗余集合中的传感器'],
+    ['passiveBus','sdbusplus::bus_t&','—','被动总线引用']
+  ]
+},
+{
+  name:'FailsafeLogger', cat:'runtime', file:'failsafeloggers/failsafe_logger.hpp', inherits:'',
+  desc:'失效保护日志的限流模型：按秒限次，并记录「当前状态下已报过」的键，避免重复刷日志。',
+  fields:[
+    ['_logMaxCountPerSecond','size_t','20','每秒最多输出条数'],
+    ['_currentFailsafeState','bool','false','当前失效保护状态'],
+    ['_logTimestamps','std::deque<size_t>','空','近期输出时间戳（滑动窗口）'],
+    ['_logsInCurrentState','std::unordered_set<std::string>','空','本状态内已记录的键']
+  ]
+},
+{
+  name:'HostStateMonitor', cat:'runtime', file:'hoststatemonitor.hpp:20', inherits:'',
+  desc:'主机电源状态单例：从 <code>State.Host.CurrentHostState</code> 是否以 <code>.Running</code> 结尾推导出布尔值。',
+  fields:[
+    ['bus','sdbusplus::bus_t&','—','D-Bus 连接'],
+    ['powerStatusOn','bool','false','主机是否上电'],
+    ['hostStateMatch','std::unique_ptr<match_t>','nullptr','Host 状态变更匹配器']
+  ]
+},
+
+/* ---------------- I/O 适配 ---------------- */
+{
+  name:'DbusWritePercent', cat:'io', file:'dbus/dbuswrite.hpp', inherits:'WriteInterface',
+  desc:'按百分比写 D-Bus（<code>Control.FanPwm</code>）的写出适配器，带「值未变则不写」的缓存。',
+  fields:[
+    ['path','std::string','""','D-Bus 对象路径'],
+    ['connectionName','std::string','""','目标服务名'],
+    ['oldValue','int64_t','-1','上次写入的原始值']
+  ]
+},
+{
+  name:'DbusWrite', cat:'io', file:'dbus/dbuswrite.hpp', inherits:'WriteInterface',
+  desc:'直接按原始值写 D-Bus 的适配器，支持冗余写（forced）与回填实际写入值。',
+  fields:[
+    ['path','std::string','""','D-Bus 对象路径'],
+    ['connectionName','std::string','""','目标服务名'],
+    ['oldValue','int64_t','-1','上次写入的原始值']
+  ]
+},
+{
+  name:'SysFsRead', cat:'io', file:'sysfs/sysfsread.hpp', inherits:'ReadInterface',
+  desc:'sysfs 读取适配器，路径中的 <code>**</code> 由 <code>FixupPath</code> 展开成实际 hwmon 目录。',
+  fields:[
+    ['_path','const std::string','—','展开后的 sysfs 路径']
+  ]
+},
+{
+  name:'SysFsWritePercent', cat:'io', file:'sysfs/sysfswrite.hpp', inherits:'WriteInterface',
+  desc:'按百分比写 sysfs（pwmN，0–255）的适配器。',
+  fields:[
+    ['_writePath','std::string','—','展开后的 sysfs 路径']
+  ]
+},
+{
+  name:'SysFsWrite', cat:'io', file:'sysfs/sysfswrite.hpp', inherits:'WriteInterface',
+  desc:'按原始值写 sysfs 的适配器。',
+  fields:[
+    ['_writePath','std::string','—','展开后的 sysfs 路径']
+  ]
+},
+
+/* ---------------- 线格式 ---------------- */
+{
+  name:'ipmi::FanCtrlRequest', cat:'wire', file:'ipmi/manual_messages.hpp:12', inherits:'',
+  desc:'IPMI OEM 命令请求体（读状态），<code>__attribute__((packed))</code>，2 字节。<code>zone</code> 为 zone 序号，<code>command</code> 取 <code>ManualSubCmd</code>。',
+  fields:[
+    ['command','uint8_t','—','getControlState / setControlState / getFailsafeState'],
+    ['zone','uint8_t','—','目标 zone 序号']
+  ]
+},
+{
+  name:'ipmi::FanCtrlRequestSet', cat:'wire', file:'ipmi/manual_messages.hpp:18', inherits:'',
+  desc:'IPMI OEM 命令请求体（写状态），packed，3 字节。',
+  fields:[
+    ['command','uint8_t','—','固定为 setControlState'],
+    ['zone','uint8_t','—','目标 zone 序号'],
+    ['value','uint8_t','—','要写入的布尔值']
+  ]
+},
+
+/* ---------------- 异常 ---------------- */
+{
+  name:'SensorBuildException', cat:'error', file:'errors/exception.hpp:6', inherits:'std::exception',
+  desc:'传感器配置构建失败时抛出，唯一数据成员是错误消息。',
+  fields:[['message','std::string','""','错误描述（what() 返回其 c_str）']]
+},
+{
+  name:'ControllerBuildException', cat:'error', file:'errors/exception.hpp:19', inherits:'std::exception',
+  desc:'PID 控制器构建失败时抛出。',
+  fields:[['message','std::string','""','错误描述']]
+},
+{
+  name:'ConfigurationException', cat:'error', file:'errors/exception.hpp:32', inherits:'std::exception',
+  desc:'整体配置非法（如缺少 sensors / zones）时抛出。',
+  fields:[['message','std::string','""','错误描述']]
+}
+];
+
+/* ============================ 枚举 ============================ */
+const ENUMS = [
+  {
+    name:'FanSpeedDirection', file:'pid/fan.hpp:7',
+    vals:['DOWN','UP','NEUTRAL'],
+    desc:'风扇转速变化方向。<code>NEUTRAL</code> 为「未判定」的缺省态，是 FanController 的初始值。'
+  },
+  {
+    name:'ThermalType', file:'pid/thermalcontroller.hpp',
+    vals:['margin','absolute','summation'],
+    desc:'热控输入的聚合方式：取 margin、取绝对温度、或多输入求和。由配置里的 <code>type</code> 字符串映射而来。'
+  },
+  {
+    name:'IOInterfaceType', file:'sensors/build_utils.hpp',
+    vals:['NONE','EXTERNAL','DBUSPASSIVE','DBUSACTIVE','SYSFS','UNKNOWN'],
+    desc:'由路径字符串推导出的 I/O 类别，是「配置路径 → 适配器实现」的分派依据。'
+  },
+  {
+    name:'ManualSubCmd', file:'ipmi/manual_messages.hpp:7',
+    vals:['getControlState = 0','setControlState = 1','getFailsafeState = 2'],
+    desc:'IPMI OEM 手动控制的子命令号，与 <code>FanCtrlRequest.command</code> 对应。'
+  },
+  {
+    name:'Control.FanRedundancy.State', file:'xyz.openbmc_project.Control.FanRedundancy',
+    vals:['Full','Degraded','Failed'],
+    desc:'外部 D-Bus 枚举。只有 <code>Failed</code> 会被展开成「集合内所有风扇失效」。'
+  },
+  {
+    name:'Debug.Pid.ThermalPower.ClassType', file:'xyz.openbmc_project.Debug.Pid.ThermalPower',
+    vals:['Temperature','Margin','Power','PowerSum'],
+    desc:'外部契约中以字符串形式暴露的回路类别，取值集合由接口文档约定。'
+  }
+];
+
+/* ============================ 渲染 ============================ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderCats(){
+  const counts = {};
+  MODELS.forEach(m => counts[m.cat] = (counts[m.cat]||0) + 1);
+  $('#cats').innerHTML = Object.entries(CATS).map(([k,c]) =>
+    `<button class="fbtn" data-cat="${k}"><span class="dot" style="--c:${c.color}"></span>${c.label} <span style="opacity:.55">${counts[k]||0}</span></button>`
+  ).join('') + `<button class="fbtn" data-cat="__all">全部 ${MODELS.length}</button>`;
+  $('#cats').querySelectorAll('.fbtn').forEach(b => b.onclick = () => {
+    const k = b.dataset.cat;
+    const wasOn = b.classList.contains('on');
+    $('#cats').querySelectorAll('.fbtn').forEach(x => x.classList.remove('on'));
+    if (wasOn && k !== '__all') {            // 再次点击已选分类 → 回到全部
+      activeCat = null;
+      $('#cats [data-cat="__all"]').classList.add('on');
+    } else {
+      b.classList.add('on');
+      activeCat = (k === '__all') ? null : k;
+    }
+    apply();
+  });
+  $('#cats [data-cat="__all"]').classList.add('on');
+}
+
+let activeCat = null;
+
+function fieldRows(m, idx){
+  return m.fields.map((f,i) => {
+    const cls = i >= 6 ? ' class="more"' : '';
+    return `<tr${cls}><td class="fn">${esc(f[0])}</td><td class="ft">${esc(f[1])}</td><td class="fd">${esc(f[2])}</td><td class="fnote">${f[3]}</td></tr>`;
+  }).join('');
+}
+
+function renderCards(){
+  $('#grid').innerHTML = MODELS.map((m,idx) => {
+    const c = CATS[m.cat];
+    const extra = m.fields.length > 6 ? m.fields.length - 6 : 0;
+    return `<article class="card" data-idx="${idx}" data-cat="${m.cat}">
+      <div class="card-h">
+        <div class="cname">${esc(m.name)}</div>
+        <span class="pill" style="--c:${c.color}">${c.label}</span>
+      </div>
+      <div class="card-meta">
+        <span>${esc(m.file)}</span>
+        <span class="sz">${m.fields.length} 字段</span>
+        ${m.inherits ? `<span>↳ ${esc(m.inherits)}</span>` : ''}
+      </div>
+      <div class="card-d">${m.desc}</div>
+      <table class="f">
+        <thead><tr><th style="width:31%">字段</th><th style="width:27%">类型</th><th style="width:14%">默认</th><th>说明</th></tr></thead>
+        <tbody>${fieldRows(m, idx)}</tbody>
+      </table>
+      <div class="fold">
+        <button class="exp">展开全部 ${m.fields.length} 个字段 ▾</button>
+        <button class="col">收起 ▴</button>
+        <span class="foot-note">${esc(m.file)}</span>
+      </div>
+    </article>`;
+  }).join('');
+
+  $('#grid').querySelectorAll('.card').forEach(card => {
+    card.querySelector('.card-h').onclick = () => card.classList.toggle('open');
+    card.querySelector('.fold').onclick = (e) => {
+      e.stopPropagation();
+      card.classList.toggle('open');
+    };
+  });
+}
+
+function renderEnums(){
+  $('#enums').innerHTML = ENUMS.map(e => `
+    <div class="ecard">
+      <div class="en">${esc(e.name)}</div>
+      <div class="ef">${esc(e.file)}</div>
+      <div class="evals">${e.vals.map(v => `<span class="eval">${esc(v)}</span>`).join('')}</div>
+      <div class="ed">${e.desc}</div>
+    </div>`).join('');
+}
+
+function stats(){
+  const fields = MODELS.reduce((a,m) => a + m.fields.length, 0);
+  const cats = new Set(MODELS.map(m => m.cat)).size;
+  const enumVals = ENUMS.reduce((a,e) => a + e.vals.length, 0);
+  const biggest = MODELS.reduce((a,m) => m.fields.length > a.fields.length ? m : a, MODELS[0]);
+  const items = [
+    ['#2563eb', MODELS.length, '个数据模型类型'],
+    ['#0ea5e9', fields, '个字段'],
+    ['#8b5cf6', cats, '个职责分类'],
+    ['#f43f5e', ENUMS.length, '组枚举 / 常量'],
+    ['#10b981', enumVals, '个枚举取值'],
+    ['#f59e0b', biggest.fields.length, '字段最多：' + biggest.name]
+  ];
+  $('#stats').innerHTML = items.map(([c,n,l]) =>
+    `<div class="stat" style="--bar:${c}"><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`).join('');
+  $('#fstat').textContent = MODELS.length + ' types · ' + fields + ' fields · ' + ENUMS.length + ' enums';
+}
+
+function apply(){
+  const q = ($('#q').value || '').trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('.card').forEach(card => {
+    const m = MODELS[+card.dataset.idx];
+    const catOk = !activeCat || m.cat === activeCat;
+    const hay = (m.name + ' ' + m.desc + ' ' + m.file + ' ' +
+      m.fields.map(f => f[0] + ' ' + f[1] + ' ' + f[3]).join(' ')).toLowerCase();
+    const qOk = !q || hay.includes(q);
+    const vis = catOk && qOk;
+    card.classList.toggle('hide', !vis);
+    if (vis) shown++;
+    if (q && vis && !card.classList.contains('open')) {
+      card.classList.add('open', 'auto');   // 仅供搜索临时展开
+    }
+    if (!q && card.classList.contains('auto')) {
+      card.classList.remove('open', 'auto');
+    }
+  });
+  $('#cnt').textContent = shown + ' / ' + MODELS.length;
+  $('#empty').style.display = shown ? 'none' : 'block';
+}
+
+/* init */
+stats();
+renderCats();
+renderCards();
+renderEnums();
+apply();
+
+$('#q').addEventListener('input', apply);
+$('#expandAll').onclick = () => document.querySelectorAll('.card:not(.hide)').forEach(c => c.classList.add('open'));
+$('#collapseAll').onclick = () => document.querySelectorAll('.card').forEach(c => c.classList.remove('open','auto'));
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); }
+  if (e.key === 'Escape') { $('#q').value = ''; apply(); $('#q').blur(); }
+});
+</script>
+</body>
+</html>

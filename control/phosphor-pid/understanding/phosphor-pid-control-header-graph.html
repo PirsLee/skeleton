@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>phosphor-pid-control · 头文件依赖关系图</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --panel:#ffffff;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --accent:#2563eb;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC",
+            "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1680px;margin:0 auto;padding:28px 24px 64px}
+
+  /* ---------- header ---------- */
+  header.top{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+  h1{font-size:24px;margin:0 0 6px;letter-spacing:-.2px}
+  h1 span{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px}
+  .sub code{font-family:var(--mono);font-size:12px;background:#eef2f7;padding:2px 6px;border-radius:5px;color:#475569}
+  .badges{display:flex;flex-wrap:wrap;gap:8px}
+  .badge{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:#475569}
+  .badge b{color:var(--ink);font-weight:600}
+
+  /* ---------- stat cards ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .v{font-size:26px;font-weight:650;letter-spacing:-.5px;line-height:1.1}
+  .stat .k{font-size:11.5px;color:var(--muted);margin-top:4px;letter-spacing:.3px}
+  .stat.ok .v{color:#059669}
+  .stat.warn .v{color:#d97706}
+
+  /* ---------- graph section ---------- */
+  .graphRow{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:16px;align-items:start}
+  @media (max-width:1180px){ .graphRow{grid-template-columns:minmax(0,1fr)} }
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .search{position:relative;flex:1 1 220px;min-width:180px}
+  .search input{
+    width:100%;padding:8px 12px 8px 32px;border:1px solid var(--line);border-radius:9px;
+    font-size:13px;font-family:var(--sans);background:#f8fafc;color:var(--ink);outline:none;
+  }
+  .search input:focus{border-color:#93c5fd;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:#94a3b8;fill:none;stroke-width:2}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;
+    border-radius:999px;padding:4px 10px;font-size:11.5px;color:#475569;cursor:pointer;user-select:none;
+    transition:all .12s ease;
+  }
+  .chip .dot{width:8px;height:8px;border-radius:2px}
+  .chip.off{opacity:.38;background:#f1f5f9}
+  .chip:hover{border-color:#cbd5e1}
+  .btns{display:flex;gap:6px;margin-left:auto}
+  .btn{
+    border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;
+    color:#475569;cursor:pointer;font-family:var(--sans);
+  }
+  .btn:hover{background:#f8fafc;border-color:#cbd5e1}
+  .btn.on{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+
+  .canvas{position:relative;height:812px;overflow:hidden;border-radius:0 0 14px 14px;
+          background:
+            radial-gradient(circle at 1px 1px, #dbe2ea 1px, transparent 0) 0 0/22px 22px,
+            linear-gradient(#fff,#fbfcfe);
+          cursor:grab}
+  .canvas.dragging{cursor:grabbing}
+  .canvas svg{width:100%;height:100%;display:block}
+  .hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:#94a3b8;pointer-events:none}
+
+  /* svg node */
+  .node{cursor:pointer}
+  .node rect.box{fill:#fff;stroke:#dbe3ee;stroke-width:1.2;rx:9}
+  .node rect.band{rx:2}
+  .node text.name{font-family:var(--mono);font-size:11.5px;font-weight:600;fill:#0f172a}
+  .node text.dir{font-family:var(--mono);font-size:9px;fill:#94a3b8}
+  .node.isolated rect.box{stroke-dasharray:4 3}
+  .node.dim{opacity:.12}
+  .node.hl rect.box{stroke-width:2}
+  .node.hl text.name{fill:#0b1220}
+  .node.sel rect.box{stroke-width:2.4}
+  .node.hidden{display:none}
+  .edge{fill:none;stroke:#cbd5e1;stroke-width:1.4}
+  .edge.dim{opacity:.07}
+  .edge.hl{stroke-width:2.3}
+  .edge.hidden{display:none}
+
+  /* ---------- detail panel ---------- */
+  .detail{padding:16px;font-size:12.5px;position:sticky;top:16px;max-height:790px;overflow:auto}
+  .detail h3{margin:0 0 2px;font-size:14px;font-family:var(--mono);word-break:break-all;letter-spacing:-.2px}
+  .detail .meta{color:var(--muted);font-size:11.5px;margin-bottom:12px}
+  .mchip{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:1px 7px;font-size:10.5px;color:#fff}
+  .kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line);font-size:12px}
+  .kv span:nth-child(2){font-weight:650;color:var(--ink)}
+  .sec-t{font-size:11px;letter-spacing:.6px;color:#94a3b8;margin:16px 0 7px;font-weight:600}
+  .refList{display:flex;flex-direction:column;gap:2px}
+  .ref{
+    font-family:var(--mono);font-size:10.5px;color:#334155;padding:3px 7px;border-radius:5px;
+    cursor:pointer;border-left:2px solid var(--line);word-break:break-all;background:#f8fafc;
+  }
+  .ref:hover{background:#eef4ff;border-left-color:var(--accent);color:#1d4ed8}
+  .empty{color:#94a3b8;font-size:11.5px;font-style:italic}
+  .srcList{font-family:var(--mono);font-size:10px;color:#64748b;line-height:1.75;word-break:break-all}
+  .placeholder{color:#94a3b8;font-size:12px;text-align:center;padding:40px 10px;line-height:1.9}
+  .placeholder b{display:block;font-size:26px;margin-bottom:8px;color:#cbd5e1}
+
+  /* ---------- notes ---------- */
+  section.block{margin-top:34px}
+  h2{font-size:16px;margin:0 0 12px;letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
+  h2 .tag{font-size:10px;font-weight:600;letter-spacing:.5px;color:#94a3b8;border:1px solid var(--line);
+          border-radius:5px;padding:1px 6px;text-transform:uppercase;background:#fff}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card h4{margin:0 0 8px;font-size:13px;letter-spacing:-.1px}
+  .card p{margin:0 0 8px;font-size:12.5px;color:#475569}
+  .card p:last-child{margin-bottom:0}
+  .card ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:#475569}
+  .card li{margin:3px 0}
+  .card code,.inline-code{font-family:var(--mono);font-size:11.5px;background:#f1f5f9;padding:1px 5px;border-radius:4px;color:#334155}
+
+  .lvls{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .lvl{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .lvl .h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+  .lvl .h b{font-size:13px}
+  .lvl .h .n{font-size:11px;color:var(--muted)}
+  .lvl .d{font-size:11.5px;color:#64748b;margin-bottom:8px}
+  .lvl .l{font-family:var(--mono);font-size:10px;color:#334155;line-height:1.7;overflow-wrap:anywhere}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:7px 10px;text-align:left;border-bottom:1px solid #eef2f7;vertical-align:top}
+  th{font-size:10.5px;letter-spacing:.5px;color:#94a3b8;font-weight:600;
+     position:sticky;top:0;background:#fff;z-index:2}
+  tbody tr:hover{background:#f8fafc}
+  td.path{font-family:var(--mono);font-size:11px;color:#0f172a;white-space:nowrap}
+  td.deps{font-family:var(--mono);font-size:10.5px;color:#64748b;line-height:1.6;word-break:break-word}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;color:#475569;white-space:nowrap}
+  .tableBox{max-height:620px;overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+
+  .matrix{border-collapse:separate;border-spacing:3px;font-size:10.5px}
+  .matrix th{position:static;background:transparent;padding:2px 6px;font-size:10px;text-transform:none;letter-spacing:0;
+             color:#64748b;white-space:nowrap}
+  .matrix th.rowh{text-align:right;font-family:var(--mono)}
+  .matrix td{width:30px;height:26px;text-align:center;border:none;border-radius:5px;font-variant-numeric:tabular-nums;
+             color:#334155;font-weight:600}
+  .matrix td.zero{background:#f8fafc;color:#cbd5e1;font-weight:400}
+  .matrixScroll{overflow:auto;padding-bottom:4px}
+
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:#94a3b8}
+  footer code{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>phosphor-pid-control · <span>头文件依赖关系图</span></h1>
+      <div class="sub">
+        扫描路径 <code>build/evb-ast2600/workspace/sources/phosphor-pid-control</code> ·
+        仅统计仓库内 <b>引号 include</b>（本地头文件），不含系统 / 第三方依赖
+      </div>
+    </div>
+    <div class="badges" id="badges"></div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="graphRow">
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="搜索头文件，如 zone / dbus / sensor.hpp …" autocomplete="off">
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="btns">
+          <button class="btn" id="btnFit">适应视图</button>
+          <button class="btn" id="btnReset">重置</button>
+          <button class="btn on" id="btnIso">孤立节点</button>
+        </div>
+      </div>
+      <div class="canvas" id="canvas">
+        <svg id="svg"><g id="viewport"><g id="edges"></g><g id="nodes"></g></g></svg>
+        <div class="hint">滚轮缩放 · 拖拽平移 · 悬停高亮上下游 · 点击查看详情</div>
+      </div>
+    </div>
+
+    <aside class="panel detail" id="detail">
+      <div class="placeholder"><b>⌘</b>点击任意头文件节点<br>查看它的直接依赖 / 被依赖 / 引用源文件</div>
+    </aside>
+  </div>
+
+  <section class="block">
+    <h2>分层结构 <span class="tag">按最长依赖路径分层</span></h2>
+    <div class="lvls" id="levelCards"></div>
+  </section>
+
+  <section class="block">
+    <h2>关键观察 <span class="tag">dependency insights</span></h2>
+    <div class="grid2" id="insights"></div>
+  </section>
+
+  <section class="block">
+    <h2>模块耦合矩阵 <span class="tag">行 = 引用方，列 = 被引用方</span></h2>
+    <div class="card"><div class="matrixScroll" id="matrixBox"></div></div>
+  </section>
+
+  <section class="block">
+    <h2>完整邻接表 <span class="tag">53 headers</span></h2>
+    <div class="tableBox">
+      <table>
+        <thead><tr>
+          <th style="width:270px">头文件</th>
+          <th style="width:92px">模块</th>
+          <th style="width:44px">层</th>
+          <th>直接 #include（出边）</th>
+          <th style="width:52px">出度</th>
+          <th style="width:52px">入度</th>
+          <th style="width:64px">源文件</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    生成方式：递归扫描仓库内 <code>*.hpp / *.h / *.cpp</code>（排除 <code>.git/</code>、<code>subprojects/</code>），
+    按 meson <code>root_inc</code>（<code>.</code>、<code>buildjson</code>、<code>dbus</code>、<code>errors</code>、<code>ipmi</code>、
+    <code>notimpl</code>、<code>pid</code>、<code>sensors</code>、<code>sysfs</code>）解析引号 include 的真实落点；
+    <code>"config.h"</code> 由 <code>configure_file()</code> 生成，不计入图中。
+  </footer>
+</div>
+
+<script>
+const DATA = {
+ "root": "/home/mickian/aspeed/aspeed_v1103/build/evb-ast2600/workspace/sources/phosphor-pid-control",
+ "nodes": [
+  {
+   "id": "buildjson/buildjson.hpp",
+   "module": "buildjson",
+   "level": 0
+  },
+  {
+   "id": "conf.hpp",
+   "module": "root",
+   "level": 1
+  },
+  {
+   "id": "dbus/dbusconfiguration.hpp",
+   "module": "dbus",
+   "level": 2
+  },
+  {
+   "id": "dbus/dbushelper.hpp",
+   "module": "dbus",
+   "level": 1
+  },
+  {
+   "id": "dbus/dbushelper_interface.hpp",
+   "module": "dbus",
+   "level": 0
+  },
+  {
+   "id": "dbus/dbuspassive.hpp",
+   "module": "dbus",
+   "level": 2
+  },
+  {
+   "id": "dbus/dbuspassiveredundancy.hpp",
+   "module": "dbus",
+   "level": 0
+  },
+  {
+   "id": "dbus/dbusutil.hpp",
+   "module": "dbus",
+   "level": 0
+  },
+  {
+   "id": "dbus/dbuswrite.hpp",
+   "module": "dbus",
+   "level": 1
+  },
+  {
+   "id": "errors/exception.hpp",
+   "module": "errors",
+   "level": 0
+  },
+  {
+   "id": "failsafeloggers/builder.hpp",
+   "module": "failsafeloggers",
+   "level": 3
+  },
+  {
+   "id": "failsafeloggers/failsafe_logger.hpp",
+   "module": "failsafeloggers",
+   "level": 0
+  },
+  {
+   "id": "failsafeloggers/failsafe_logger_utility.hpp",
+   "module": "failsafeloggers",
+   "level": 1
+  },
+  {
+   "id": "hoststatemonitor.hpp",
+   "module": "root",
+   "level": 0
+  },
+  {
+   "id": "interfaces.hpp",
+   "module": "root",
+   "level": 0
+  },
+  {
+   "id": "ipmi/control.hpp",
+   "module": "ipmi",
+   "level": 0
+  },
+  {
+   "id": "ipmi/dbus_mode.hpp",
+   "module": "ipmi",
+   "level": 1
+  },
+  {
+   "id": "ipmi/manual_messages.hpp",
+   "module": "ipmi",
+   "level": 0
+  },
+  {
+   "id": "ipmi/manualcmds.hpp",
+   "module": "ipmi",
+   "level": 1
+  },
+  {
+   "id": "notimpl/readonly.hpp",
+   "module": "notimpl",
+   "level": 1
+  },
+  {
+   "id": "notimpl/writeonly.hpp",
+   "module": "notimpl",
+   "level": 1
+  },
+  {
+   "id": "pid/builder.hpp",
+   "module": "pid",
+   "level": 3
+  },
+  {
+   "id": "pid/buildjson.hpp",
+   "module": "pid",
+   "level": 2
+  },
+  {
+   "id": "pid/controller.hpp",
+   "module": "pid",
+   "level": 0
+  },
+  {
+   "id": "pid/ec/logging.hpp",
+   "module": "pid",
+   "level": 1
+  },
+  {
+   "id": "pid/ec/pid.hpp",
+   "module": "pid",
+   "level": 0
+  },
+  {
+   "id": "pid/ec/stepwise.hpp",
+   "module": "pid",
+   "level": 0
+  },
+  {
+   "id": "pid/fan.hpp",
+   "module": "pid",
+   "level": 0
+  },
+  {
+   "id": "pid/fancontroller.hpp",
+   "module": "pid",
+   "level": 2
+  },
+  {
+   "id": "pid/pidcontroller.hpp",
+   "module": "pid",
+   "level": 1
+  },
+  {
+   "id": "pid/pidloop.hpp",
+   "module": "pid",
+   "level": 3
+  },
+  {
+   "id": "pid/stepwisecontroller.hpp",
+   "module": "pid",
+   "level": 1
+  },
+  {
+   "id": "pid/thermalcontroller.hpp",
+   "module": "pid",
+   "level": 2
+  },
+  {
+   "id": "pid/tuning.hpp",
+   "module": "pid",
+   "level": 0
+  },
+  {
+   "id": "pid/zone.hpp",
+   "module": "pid",
+   "level": 3
+  },
+  {
+   "id": "pid/zone_interface.hpp",
+   "module": "pid",
+   "level": 2
+  },
+  {
+   "id": "sensors/build_utils.hpp",
+   "module": "sensors",
+   "level": 0
+  },
+  {
+   "id": "sensors/builder.hpp",
+   "module": "sensors",
+   "level": 3
+  },
+  {
+   "id": "sensors/buildjson.hpp",
+   "module": "sensors",
+   "level": 2
+  },
+  {
+   "id": "sensors/host.hpp",
+   "module": "sensors",
+   "level": 2
+  },
+  {
+   "id": "sensors/manager.hpp",
+   "module": "sensors",
+   "level": 2
+  },
+  {
+   "id": "sensors/pluggable.hpp",
+   "module": "sensors",
+   "level": 2
+  },
+  {
+   "id": "sensors/sensor.hpp",
+   "module": "sensors",
+   "level": 1
+  },
+  {
+   "id": "sysfs/sysfsread.hpp",
+   "module": "sysfs",
+   "level": 3
+  },
+  {
+   "id": "sysfs/sysfswrite.hpp",
+   "module": "sysfs",
+   "level": 3
+  },
+  {
+   "id": "test/controller_mock.hpp",
+   "module": "test",
+   "level": 3
+  },
+  {
+   "id": "test/dbushelper_mock.hpp",
+   "module": "test",
+   "level": 1
+  },
+  {
+   "id": "test/helpers.hpp",
+   "module": "test",
+   "level": 0
+  },
+  {
+   "id": "test/readinterface_mock.hpp",
+   "module": "test",
+   "level": 1
+  },
+  {
+   "id": "test/sensor_mock.hpp",
+   "module": "test",
+   "level": 2
+  },
+  {
+   "id": "test/writeinterface_mock.hpp",
+   "module": "test",
+   "level": 1
+  },
+  {
+   "id": "test/zone_mock.hpp",
+   "module": "test",
+   "level": 3
+  },
+  {
+   "id": "util.hpp",
+   "module": "root",
+   "level": 2
+  }
+ ],
+ "edges": [
+  {
+   "from": "conf.hpp",
+   "to": "pid/ec/pid.hpp"
+  },
+  {
+   "from": "conf.hpp",
+   "to": "pid/ec/stepwise.hpp"
+  },
+  {
+   "from": "dbus/dbusconfiguration.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "dbus/dbushelper.hpp",
+   "to": "dbus/dbushelper_interface.hpp"
+  },
+  {
+   "from": "dbus/dbuspassive.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "dbus/dbuspassive.hpp",
+   "to": "dbus/dbushelper_interface.hpp"
+  },
+  {
+   "from": "dbus/dbuspassive.hpp",
+   "to": "dbus/dbuspassiveredundancy.hpp"
+  },
+  {
+   "from": "dbus/dbuspassive.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "dbus/dbuswrite.hpp",
+   "to": "dbus/dbushelper_interface.hpp"
+  },
+  {
+   "from": "dbus/dbuswrite.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "failsafeloggers/builder.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "failsafeloggers/failsafe_logger_utility.hpp",
+   "to": "failsafeloggers/failsafe_logger.hpp"
+  },
+  {
+   "from": "ipmi/dbus_mode.hpp",
+   "to": "ipmi/control.hpp"
+  },
+  {
+   "from": "ipmi/manualcmds.hpp",
+   "to": "ipmi/control.hpp"
+  },
+  {
+   "from": "notimpl/readonly.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "notimpl/writeonly.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "pid/builder.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "pid/builder.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "pid/builder.hpp",
+   "to": "sensors/manager.hpp"
+  },
+  {
+   "from": "pid/buildjson.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "pid/ec/logging.hpp",
+   "to": "pid/ec/pid.hpp"
+  },
+  {
+   "from": "pid/fancontroller.hpp",
+   "to": "pid/ec/pid.hpp"
+  },
+  {
+   "from": "pid/fancontroller.hpp",
+   "to": "pid/fan.hpp"
+  },
+  {
+   "from": "pid/fancontroller.hpp",
+   "to": "pid/pidcontroller.hpp"
+  },
+  {
+   "from": "pid/pidcontroller.hpp",
+   "to": "pid/controller.hpp"
+  },
+  {
+   "from": "pid/pidcontroller.hpp",
+   "to": "pid/ec/pid.hpp"
+  },
+  {
+   "from": "pid/pidloop.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "pid/stepwisecontroller.hpp",
+   "to": "pid/controller.hpp"
+  },
+  {
+   "from": "pid/stepwisecontroller.hpp",
+   "to": "pid/ec/stepwise.hpp"
+  },
+  {
+   "from": "pid/thermalcontroller.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "pid/thermalcontroller.hpp",
+   "to": "pid/ec/pid.hpp"
+  },
+  {
+   "from": "pid/thermalcontroller.hpp",
+   "to": "pid/pidcontroller.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "failsafeloggers/failsafe_logger_utility.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "pid/controller.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "pid/pidcontroller.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "pid/tuning.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "sensors/manager.hpp"
+  },
+  {
+   "from": "pid/zone.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "pid/zone_interface.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "pid/zone_interface.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "sensors/builder.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "sensors/builder.hpp",
+   "to": "sensors/manager.hpp"
+  },
+  {
+   "from": "sensors/buildjson.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "sensors/host.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "sensors/host.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "sensors/manager.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "sensors/pluggable.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "sensors/pluggable.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "sensors/sensor.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "sysfs/sysfsread.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "sysfs/sysfsread.hpp",
+   "to": "util.hpp"
+  },
+  {
+   "from": "sysfs/sysfswrite.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "sysfs/sysfswrite.hpp",
+   "to": "util.hpp"
+  },
+  {
+   "from": "test/controller_mock.hpp",
+   "to": "pid/controller.hpp"
+  },
+  {
+   "from": "test/controller_mock.hpp",
+   "to": "pid/pidcontroller.hpp"
+  },
+  {
+   "from": "test/controller_mock.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "test/dbushelper_mock.hpp",
+   "to": "dbus/dbushelper_interface.hpp"
+  },
+  {
+   "from": "test/readinterface_mock.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "test/sensor_mock.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "test/sensor_mock.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "test/writeinterface_mock.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "test/zone_mock.hpp",
+   "to": "interfaces.hpp"
+  },
+  {
+   "from": "test/zone_mock.hpp",
+   "to": "pid/zone_interface.hpp"
+  },
+  {
+   "from": "test/zone_mock.hpp",
+   "to": "sensors/sensor.hpp"
+  },
+  {
+   "from": "util.hpp",
+   "to": "conf.hpp"
+  },
+  {
+   "from": "util.hpp",
+   "to": "pid/ec/pid.hpp"
+  }
+ ],
+ "usage": {
+  "pid/ec/pid.hpp": [
+   "conf.hpp",
+   "pid/ec/logging.cpp",
+   "pid/ec/logging.hpp",
+   "pid/ec/pid.cpp",
+   "pid/fancontroller.cpp",
+   "pid/fancontroller.hpp",
+   "pid/pidcontroller.cpp",
+   "pid/pidcontroller.hpp",
+   "pid/thermalcontroller.cpp",
+   "pid/thermalcontroller.hpp",
+   "pid/util.cpp",
+   "test/pid_fancontroller_unittest.cpp",
+   "test/pid_thermalcontroller_unittest.cpp",
+   "test/pid_zone_unittest.cpp",
+   "util.hpp"
+  ],
+  "pid/ec/stepwise.hpp": [
+   "conf.hpp",
+   "dbus/dbusconfiguration.cpp",
+   "pid/buildjson.cpp",
+   "pid/ec/stepwise.cpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/stepwisecontroller.hpp",
+   "test/pid_stepwisecontroller_unittest.cpp"
+  ],
+  "buildjson/buildjson.hpp": [
+   "buildjson/buildjson.cpp",
+   "main.cpp",
+   "test/json_parse_unittest.cpp"
+  ],
+  "conf.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "dbus/dbusconfiguration.hpp",
+   "dbus/dbuspassive.cpp",
+   "dbus/dbuspassive.hpp",
+   "main.cpp",
+   "pid/builder.cpp",
+   "pid/builder.hpp",
+   "pid/buildjson.cpp",
+   "pid/buildjson.hpp",
+   "pid/thermalcontroller.cpp",
+   "pid/thermalcontroller.hpp",
+   "pid/zone.cpp",
+   "pid/zone.hpp",
+   "sensors/builder.cpp",
+   "sensors/builder.hpp",
+   "sensors/buildjson.cpp",
+   "sensors/buildjson.hpp",
+   "test/dbus_passive_unittest.cpp",
+   "test/pid_json_unittest.cpp",
+   "test/pid_thermalcontroller_unittest.cpp",
+   "test/pid_zone_unittest.cpp",
+   "util.cpp",
+   "util.hpp"
+  ],
+  "dbus/dbusconfiguration.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "main.cpp"
+  ],
+  "failsafeloggers/builder.hpp": [
+   "failsafeloggers/builder.cpp",
+   "main.cpp",
+   "test/pid_zone_unittest.cpp"
+  ],
+  "hoststatemonitor.hpp": [
+   "main.cpp",
+   "sensors/host.cpp",
+   "sensors/pluggable.cpp"
+  ],
+  "pid/builder.hpp": [
+   "main.cpp",
+   "pid/builder.cpp"
+  ],
+  "pid/buildjson.hpp": [
+   "main.cpp",
+   "pid/buildjson.cpp",
+   "test/pid_json_unittest.cpp"
+  ],
+  "pid/pidloop.hpp": [
+   "main.cpp",
+   "pid/pidloop.cpp"
+  ],
+  "pid/tuning.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "main.cpp",
+   "pid/ec/logging.cpp",
+   "pid/fancontroller.cpp",
+   "pid/pidloop.cpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/thermalcontroller.cpp",
+   "pid/tuning.cpp",
+   "pid/zone.cpp",
+   "pid/zone.hpp"
+  ],
+  "sensors/builder.hpp": [
+   "main.cpp",
+   "sensors/builder.cpp"
+  ],
+  "sensors/buildjson.hpp": [
+   "main.cpp",
+   "sensors/buildjson.cpp",
+   "test/sensors_json_unittest.cpp"
+  ],
+  "sensors/manager.hpp": [
+   "main.cpp",
+   "pid/builder.cpp",
+   "pid/builder.hpp",
+   "pid/zone.hpp",
+   "sensors/builder.cpp",
+   "sensors/builder.hpp",
+   "sensors/manager.cpp",
+   "test/pid_zone_unittest.cpp",
+   "test/sensor_manager_unittest.cpp"
+  ],
+  "util.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "dbus/dbuspassive.cpp",
+   "main.cpp",
+   "pid/builder.cpp",
+   "pid/buildjson.cpp",
+   "pid/fancontroller.cpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/thermalcontroller.cpp",
+   "pid/util.cpp",
+   "sysfs/sysfsread.hpp",
+   "sysfs/sysfswrite.hpp",
+   "sysfs/util.cpp",
+   "util.cpp"
+  ],
+  "pid/zone_interface.hpp": [
+   "failsafeloggers/builder.hpp",
+   "main.cpp",
+   "pid/builder.cpp",
+   "pid/builder.hpp",
+   "pid/fancontroller.cpp",
+   "pid/pidloop.cpp",
+   "pid/pidloop.hpp",
+   "pid/thermalcontroller.cpp",
+   "pid/zone.hpp",
+   "test/controller_mock.hpp",
+   "test/pid_zone_unittest.cpp",
+   "test/zone_mock.hpp"
+  ],
+  "errors/exception.hpp": [
+   "buildjson/buildjson.cpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/thermalcontroller.cpp",
+   "sensors/builder.cpp",
+   "test/json_parse_unittest.cpp"
+  ],
+  "dbus/dbushelper.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "dbus/dbushelper.cpp",
+   "sensors/builder.cpp"
+  ],
+  "dbus/dbusutil.hpp": [
+   "dbus/dbusconfiguration.cpp",
+   "dbus/dbushelper.cpp",
+   "dbus/dbuspassive.cpp",
+   "test/dbus_util_unittest.cpp"
+  ],
+  "dbus/dbushelper_interface.hpp": [
+   "dbus/dbushelper.cpp",
+   "dbus/dbushelper.hpp",
+   "dbus/dbuspassive.cpp",
+   "dbus/dbuspassive.hpp",
+   "dbus/dbuswrite.cpp",
+   "dbus/dbuswrite.hpp",
+   "test/dbus_passive_unittest.cpp",
+   "test/dbushelper_mock.hpp"
+  ],
+  "dbus/dbuspassive.hpp": [
+   "dbus/dbuspassive.cpp",
+   "sensors/builder.cpp",
+   "test/dbus_passive_unittest.cpp"
+  ],
+  "dbus/dbuspassiveredundancy.hpp": [
+   "dbus/dbuspassive.cpp",
+   "dbus/dbuspassive.hpp",
+   "dbus/dbuspassiveredundancy.cpp",
+   "sensors/builder.cpp"
+  ],
+  "failsafeloggers/failsafe_logger_utility.hpp": [
+   "dbus/dbuspassive.cpp",
+   "failsafeloggers/builder.cpp",
+   "failsafeloggers/failsafe_logger_utility.cpp",
+   "pid/zone.cpp",
+   "pid/zone.hpp",
+   "sensors/host.cpp"
+  ],
+  "interfaces.hpp": [
+   "dbus/dbuspassive.cpp",
+   "dbus/dbuspassive.hpp",
+   "dbus/dbuswrite.cpp",
+   "dbus/dbuswrite.hpp",
+   "notimpl/readonly.hpp",
+   "notimpl/writeonly.cpp",
+   "notimpl/writeonly.hpp",
+   "pid/zone.cpp",
+   "pid/zone.hpp",
+   "pid/zone_interface.hpp",
+   "sensors/builder.cpp",
+   "sensors/host.cpp",
+   "sensors/host.hpp",
+   "sensors/pluggable.cpp",
+   "sensors/pluggable.hpp",
+   "sensors/sensor.hpp",
+   "sysfs/sysfsread.cpp",
+   "sysfs/sysfsread.hpp",
+   "sysfs/sysfswrite.hpp",
+   "test/dbus_passive_unittest.cpp",
+   "test/pid_zone_unittest.cpp",
+   "test/readinterface_mock.hpp",
+   "test/sensor_host_unittest.cpp",
+   "test/sensor_mock.hpp",
+   "test/sensor_pluggable_unittest.cpp",
+   "test/writeinterface_mock.hpp",
+   "test/zone_mock.hpp"
+  ],
+  "dbus/dbuswrite.hpp": [
+   "dbus/dbuswrite.cpp",
+   "sensors/builder.cpp"
+  ],
+  "failsafeloggers/failsafe_logger.hpp": [
+   "failsafeloggers/builder.cpp",
+   "failsafeloggers/failsafe_logger.cpp",
+   "failsafeloggers/failsafe_logger_utility.cpp",
+   "failsafeloggers/failsafe_logger_utility.hpp"
+  ],
+  "ipmi/dbus_mode.hpp": [
+   "ipmi/dbus_mode.cpp",
+   "ipmi/main_ipmi.cpp"
+  ],
+  "ipmi/control.hpp": [
+   "ipmi/dbus_mode.hpp",
+   "ipmi/manualcmds.cpp",
+   "ipmi/manualcmds.hpp"
+  ],
+  "ipmi/manualcmds.hpp": [
+   "ipmi/main_ipmi.cpp",
+   "ipmi/manualcmds.cpp"
+  ],
+  "ipmi/manual_messages.hpp": [
+   "ipmi/manualcmds.cpp"
+  ],
+  "notimpl/readonly.hpp": [
+   "notimpl/readonly.cpp",
+   "sensors/builder.cpp"
+  ],
+  "notimpl/writeonly.hpp": [
+   "notimpl/writeonly.cpp",
+   "sensors/builder.cpp"
+  ],
+  "pid/controller.hpp": [
+   "pid/builder.cpp",
+   "pid/pidcontroller.hpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/stepwisecontroller.hpp",
+   "pid/zone.cpp",
+   "pid/zone.hpp",
+   "test/controller_mock.hpp",
+   "test/pid_stepwisecontroller_unittest.cpp"
+  ],
+  "pid/fancontroller.hpp": [
+   "pid/builder.cpp",
+   "pid/fancontroller.cpp",
+   "test/pid_fancontroller_unittest.cpp"
+  ],
+  "pid/stepwisecontroller.hpp": [
+   "pid/builder.cpp",
+   "pid/stepwisecontroller.cpp",
+   "test/pid_stepwisecontroller_unittest.cpp"
+  ],
+  "pid/thermalcontroller.hpp": [
+   "pid/builder.cpp",
+   "pid/thermalcontroller.cpp",
+   "test/pid_thermalcontroller_unittest.cpp"
+  ],
+  "pid/zone.hpp": [
+   "pid/builder.cpp",
+   "pid/stepwisecontroller.cpp",
+   "pid/zone.cpp",
+   "test/pid_zone_unittest.cpp"
+  ],
+  "pid/fan.hpp": [
+   "pid/fancontroller.cpp",
+   "pid/fancontroller.hpp",
+   "test/pid_fancontroller_unittest.cpp"
+  ],
+  "pid/pidcontroller.hpp": [
+   "pid/fancontroller.cpp",
+   "pid/fancontroller.hpp",
+   "pid/pidcontroller.cpp",
+   "pid/pidloop.cpp",
+   "pid/thermalcontroller.cpp",
+   "pid/thermalcontroller.hpp",
+   "pid/zone.hpp",
+   "test/controller_mock.hpp",
+   "test/pid_fancontroller_unittest.cpp",
+   "test/pid_thermalcontroller_unittest.cpp",
+   "test/pid_zone_unittest.cpp"
+  ],
+  "sensors/sensor.hpp": [
+   "pid/zone.hpp",
+   "pid/zone_interface.hpp",
+   "sensors/buildjson.cpp",
+   "sensors/host.cpp",
+   "sensors/host.hpp",
+   "sensors/manager.cpp",
+   "sensors/manager.hpp",
+   "sensors/pluggable.hpp",
+   "test/pid_fancontroller_unittest.cpp",
+   "test/pid_zone_unittest.cpp",
+   "test/sensor_host_unittest.cpp",
+   "test/sensor_manager_unittest.cpp",
+   "test/sensor_mock.hpp",
+   "test/sensors_json_unittest.cpp",
+   "test/zone_mock.hpp"
+  ],
+  "pid/ec/logging.hpp": [
+   "pid/ec/logging.cpp",
+   "pid/ec/pid.cpp"
+  ],
+  "sensors/build_utils.hpp": [
+   "sensors/build_utils.cpp",
+   "sensors/builder.cpp",
+   "test/util_unittest.cpp"
+  ],
+  "sensors/host.hpp": [
+   "sensors/builder.cpp",
+   "sensors/host.cpp",
+   "test/sensor_host_unittest.cpp"
+  ],
+  "sensors/pluggable.hpp": [
+   "sensors/builder.cpp",
+   "sensors/pluggable.cpp",
+   "test/sensor_pluggable_unittest.cpp"
+  ],
+  "sysfs/sysfsread.hpp": [
+   "sensors/builder.cpp",
+   "sysfs/sysfsread.cpp"
+  ],
+  "sysfs/sysfswrite.hpp": [
+   "sensors/builder.cpp",
+   "sysfs/sysfswrite.cpp"
+  ],
+  "test/dbushelper_mock.hpp": [
+   "test/dbus_passive_unittest.cpp"
+  ],
+  "test/sensor_mock.hpp": [
+   "test/pid_fancontroller_unittest.cpp",
+   "test/pid_zone_unittest.cpp",
+   "test/sensor_manager_unittest.cpp"
+  ],
+  "test/zone_mock.hpp": [
+   "test/pid_fancontroller_unittest.cpp",
+   "test/pid_stepwisecontroller_unittest.cpp",
+   "test/pid_thermalcontroller_unittest.cpp"
+  ],
+  "test/controller_mock.hpp": [
+   "test/pid_zone_unittest.cpp"
+  ],
+  "test/helpers.hpp": [
+   "test/pid_zone_unittest.cpp",
+   "test/sensor_host_unittest.cpp"
+  ],
+  "test/readinterface_mock.hpp": [
+   "test/sensor_pluggable_unittest.cpp"
+  ],
+  "test/writeinterface_mock.hpp": [
+   "test/sensor_pluggable_unittest.cpp"
+  ]
+ },
+ "cycles": [],
+ "unresolved": [],
+ "cppIncludeCpp": [
+  [
+   "dbus/dbuspassive.cpp",
+   "failsafeloggers/failsafe_logger.cpp"
+  ]
+ ],
+ "fileCount": 106,
+ "headerCount": 53
+};
+
+/* ------------------------------------------------------------------ */
+/* metadata                                                            */
+/* ------------------------------------------------------------------ */
+const MODULE_ORDER = ['root','errors','buildjson','pid','sensors','dbus','sysfs','failsafeloggers','ipmi','notimpl','test'];
+const MODULE_COLORS = {
+  root:'#64748b', errors:'#ef4444', buildjson:'#0ea5e9', pid:'#2563eb', sensors:'#10b981',
+  dbus:'#8b5cf6', sysfs:'#d946ef', failsafeloggers:'#f59e0b', ipmi:'#0f766e',
+  notimpl:'#94a3b8', test:'#f43f5e'
+};
+const MODULE_LABELS = {
+  root:'顶层 / 全局', errors:'异常', buildjson:'JSON 构建', pid:'PID 核心', sensors:'传感器',
+  dbus:'D-Bus 适配', sysfs:'sysfs 适配', failsafeloggers:'失效保护日志', ipmi:'IPMI 入口',
+  notimpl:'占位实现', test:'测试桩'
+};
+const mRank = m => { const i = MODULE_ORDER.indexOf(m); return i < 0 ? 99 : i; };
+
+/* ------------------------------------------------------------------ */
+/* graph model                                                         */
+/* ------------------------------------------------------------------ */
+const nodes = DATA.nodes.map(n => {
+  const i = n.id.lastIndexOf('/');
+  return {
+    id: n.id,
+    module: n.module,
+    level: n.level,
+    base: i < 0 ? n.id : n.id.slice(i + 1),
+    dir: i < 0 ? '.' : n.id.slice(0, i),
+    out: [], in: []
+  };
+});
+const byId = new Map(nodes.map(n => [n.id, n]));
+DATA.edges.forEach(e => {
+  const a = byId.get(e.from), b = byId.get(e.to);
+  if (a && b) { a.out.push(b.id); b.in.push(a.id); }
+});
+nodes.forEach(n => { n.out.sort(); n.in.sort(); });
+
+const headerSet = new Set(nodes.map(n => n.id));
+const srcUsers = id => (DATA.usage[id] || []).filter(f => f.endsWith('.cpp'));
+const isolated = nodes.filter(n => n.out.length === 0 && n.in.length === 0);
+
+/* transitive sets */
+const descCache = new Map(), ancCache = new Map();
+function closure(id, key, cache) {
+  if (cache.has(id)) return cache.get(id);
+  const seen = new Set(), st = [...byId.get(id)[key]];
+  while (st.length) {
+    const cur = st.pop();
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    for (const nx of byId.get(cur)[key]) if (!seen.has(nx)) st.push(nx);
+  }
+  cache.set(id, seen);
+  return seen;
+}
+const descendants = id => closure(id, 'out', descCache);
+const ancestors  = id => closure(id, 'in', ancCache);
+
+/* ------------------------------------------------------------------ */
+/* header badges + stat cards                                          */
+/* ------------------------------------------------------------------ */
+const levelCount = {};
+nodes.forEach(n => levelCount[n.level] = (levelCount[n.level] || 0) + 1);
+const maxLevel = Math.max(...nodes.map(n => n.level));
+const moduleCount = new Set(nodes.map(n => n.module)).size;
+
+document.getElementById('badges').innerHTML =
+  `<span class="badge"><b>${nodes.length}</b> 头文件</span>` +
+  `<span class="badge"><b>${DATA.edges.length}</b> 依赖边</span>` +
+  `<span class="badge"><b>${moduleCount}</b> 模块</span>` +
+  `<span class="badge"><b>${DATA.cycles.length}</b> 循环</span>`;
+
+const stats = [
+  { v: nodes.length, k: '头文件 .hpp', cls: '' },
+  { v: DATA.edges.length, k: '头文件间 include 边', cls: '' },
+  { v: DATA.cycles.length, k: '循环依赖（SCC>1）', cls: DATA.cycles.length ? 'warn' : 'ok' },
+  { v: maxLevel + 1, k: `分层 L0–L${maxLevel}`, cls: '' },
+  { v: isolated.length, k: '孤立头文件（无内部依赖）', cls: 'warn' },
+  { v: DATA.fileCount, k: '扫描的 .hpp/.h/.cpp 文件', cls: '' }
+];
+document.getElementById('stats').innerHTML = stats.map(s =>
+  `<div class="stat ${s.cls}"><div class="v">${s.v}</div><div class="k">${s.k}</div></div>`).join('');
+
+/* ------------------------------------------------------------------ */
+/* layout                                                              */
+/* ------------------------------------------------------------------ */
+const NODE_W = 210, NODE_H = 40, GAP_Y = 8, COL_W = 310, PAD = 44;
+const cols = new Map();
+nodes.forEach(n => {
+  if (!cols.has(n.level)) cols.set(n.level, []);
+  cols.get(n.level).push(n);
+});
+cols.forEach(list => list.sort((a, b) => mRank(a.module) - mRank(b.module) || a.id.localeCompare(b.id)));
+
+let tallest = 0;
+cols.forEach(list => {
+  const h = list.length * NODE_H + (list.length - 1) * GAP_Y;
+  tallest = Math.max(tallest, h);
+});
+
+const pos = new Map();
+cols.forEach((list, level) => {
+  const h = list.length * NODE_H + (list.length - 1) * GAP_Y;
+  const y0 = PAD + (tallest - h) / 2;
+  list.forEach((n, i) => {
+    pos.set(n.id, { x: PAD + level * COL_W, y: y0 + i * (NODE_H + GAP_Y) });
+  });
+});
+const maxLevelKey = Math.max(...[...cols.keys()]);
+const BOUNDS = {
+  x: 0,
+  y: 0,
+  w: PAD * 2 + maxLevelKey * COL_W + NODE_W,
+  h: PAD * 2 + tallest + 46
+};
+
+/* ------------------------------------------------------------------ */
+/* svg render                                                          */
+/* ------------------------------------------------------------------ */
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+const viewport = document.getElementById('viewport');
+const gEdges = document.getElementById('edges');
+const gNodes = document.getElementById('nodes');
+
+const mk = (tag, attrs) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+};
+
+/* arrow markers, one per module colour */
+const defs = mk('defs');
+MODULE_ORDER.forEach(m => {
+  const marker = mk('marker', {
+    id: 'ar-' + m, viewBox: '0 0 10 10', refX: 9, refY: 5,
+    markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse'
+  });
+  marker.appendChild(mk('path', { d: 'M0,0 L10,5 L0,10 z', fill: MODULE_COLORS[m] }));
+  defs.appendChild(marker);
+});
+const greyMarker = mk('marker', {
+  id: 'ar-grey', viewBox: '0 0 10 10', refX: 9, refY: 5,
+  markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse'
+});
+greyMarker.appendChild(mk('path', { d: 'M0,0 L10,5 L0,10 z', fill: '#cbd5e1' }));
+defs.appendChild(greyMarker);
+svg.insertBefore(defs, viewport);
+
+/* level captions */
+const cap = mk('g', {});
+for (let lv = 0; lv <= maxLevelKey; lv++) {
+  const x = PAD + lv * COL_W;
+  const t = mk('text', {
+    x: x, y: 26, fill: '#94a3b8', 'font-size': 10,
+    'font-family': 'ui-monospace, monospace', 'letter-spacing': '1.2'
+  });
+  t.textContent = `L${lv}`;
+  cap.appendChild(t);
+}
+viewport.appendChild(cap);
+
+const nodeEls = new Map();
+const edgeEls = [];
+
+DATA.edges.forEach(e => {
+  const a = pos.get(e.from), b = pos.get(e.to);
+  if (!a || !b) return;
+  const x1 = a.x, y1 = a.y + NODE_H / 2;
+  const x2 = b.x + NODE_W, y2 = b.y + NODE_H / 2;
+  const dx = Math.max(48, Math.abs(x1 - x2) * 0.42);
+  const p = mk('path', {
+    class: 'edge',
+    d: `M${x1},${y1} C${x1 - dx},${y1} ${x2 + dx},${y2} ${x2},${y2}`,
+    'marker-end': 'url(#ar-grey)'
+  });
+  p.dataset.from = e.from;
+  p.dataset.to = e.to;
+  gEdges.appendChild(p);
+  edgeEls.push(p);
+});
+
+nodes.forEach(n => {
+  const { x, y } = pos.get(n.id);
+  const g = mk('g', { class: 'node', transform: `translate(${x},${y})` });
+  if (n.out.length === 0 && n.in.length === 0) g.classList.add('isolated');
+  g.dataset.id = n.id;
+
+  g.appendChild(mk('rect', {
+    class: 'box', x: 0, y: 0, width: NODE_W, height: NODE_H, rx: 9,
+    fill: '#ffffff', stroke: '#dbe3ee'
+  }));
+  g.appendChild(mk('rect', {
+    class: 'band', x: 0, y: 0, width: 4, height: NODE_H, rx: 2,
+    fill: MODULE_COLORS[n.module] || '#94a3b8'
+  }));
+
+  const name = mk('text', { class: 'name', x: 14, y: 18 });
+  name.textContent = n.base;
+  g.appendChild(name);
+
+  const dir = mk('text', { class: 'dir', x: 14, y: 31 });
+  dir.textContent = n.dir === '.' ? '· root ·' : n.dir + '/';
+  g.appendChild(dir);
+
+  if (n.out.length === 0 && n.in.length === 0) {
+    const dot = mk('text', { x: NODE_W - 16, y: 18, 'font-size': 11, fill: '#cbd5e1', 'text-anchor': 'middle' });
+    dot.textContent = '∅';
+    g.appendChild(dot);
+  }
+
+  g.addEventListener('mouseenter', () => highlight(n.id));
+  g.addEventListener('mouseleave', () => highlight(selectedId));
+  g.addEventListener('click', ev => { ev.stopPropagation(); select(n.id); });
+
+  gNodes.appendChild(g);
+  nodeEls.set(n.id, g);
+});
+
+/* ------------------------------------------------------------------ */
+/* highlight / selection                                               */
+/* ------------------------------------------------------------------ */
+let selectedId = null;
+let pinned = null;
+
+function relatedSet(id) {
+  return new Set([id, ...descendants(id), ...ancestors(id)]);
+}
+
+function highlight(id) {
+  const rel = id ? relatedSet(id) : null;
+  nodeEls.forEach((g, nid) => {
+    g.classList.toggle('dim', !!rel && !rel.has(nid));
+  });
+  edgeEls.forEach(p => {
+    const on = !!rel && rel.has(p.dataset.from) && rel.has(p.dataset.to);
+    p.classList.toggle('hl', on);
+    p.classList.toggle('dim', !!rel && !on);
+    const m = byId.get(p.dataset.from).module;
+    p.setAttribute('marker-end', on ? `url(#ar-${m})` : 'url(#ar-grey)');
+    if (on) p.style.stroke = MODULE_COLORS[m];
+    else p.style.stroke = '';
+  });
+}
+
+function select(id) {
+  selectedId = id;
+  nodeEls.forEach((g, nid) => g.classList.toggle('sel', nid === id));
+  highlight(id);
+  renderDetail(id);
+}
+
+document.getElementById('canvas').addEventListener('click', () => {
+  selectedId = null;
+  nodeEls.forEach(g => g.classList.remove('sel'));
+  highlight(null);
+});
+
+/* ------------------------------------------------------------------ */
+/* detail panel                                                        */
+/* ------------------------------------------------------------------ */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderDetail(id) {
+  const n = byId.get(id);
+  if (!n) return;
+  const users = srcUsers(id);
+  const color = MODULE_COLORS[n.module] || '#94a3b8';
+  const refItem = x =>
+    `<div class="ref" data-go="${esc(x)}">${esc(x)}</div>`;
+
+  let html = `
+    <h3>${esc(n.id)}</h3>
+    <div class="meta">
+      <span class="mchip" style="background:${color}">${esc(MODULE_LABELS[n.module] || n.module)}</span>
+      &nbsp; L${n.level} · 出度 ${n.out.length} · 入度 ${n.in.length}
+    </div>
+    <div class="kv"><span>传递依赖（它能到达的头文件）</span><span>${descendants(id).size}</span></div>
+    <div class="kv"><span>传递被依赖（能到达它的头文件）</span><span>${ancestors(id).size}</span></div>
+    <div class="kv"><span>被 .cpp 源文件引用</span><span>${users.length}</span></div>
+  `;
+
+  html += `<div class="sec-t">直接 #include（${n.out.length}）</div>`;
+  html += n.out.length
+    ? `<div class="refList">${n.out.map(refItem).join('')}</div>`
+    : `<div class="empty">无 —— 位于依赖链最底层</div>`;
+
+  html += `<div class="sec-t">被以下头文件 include（${n.in.length}）</div>`;
+  html += n.in.length
+    ? `<div class="refList">${n.in.map(refItem).join('')}</div>`
+    : `<div class="empty">无 —— 没有内部头文件依赖它</div>`;
+
+  if (users.length) {
+    html += `<div class="sec-t">引用该头文件的源文件（${users.length}）</div>`;
+    html += `<div class="srcList">${users.map(esc).join('<br>')}</div>`;
+  }
+
+  const box = document.getElementById('detail');
+  box.innerHTML = html;
+  box.scrollTop = 0;
+  box.querySelectorAll('[data-go]').forEach(el => {
+    el.addEventListener('click', () => {
+      const t = el.dataset.go;
+      if (byId.has(t)) { select(t); focusNode(t); }
+    });
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* pan / zoom                                                          */
+/* ------------------------------------------------------------------ */
+const canvas = document.getElementById('canvas');
+let view = { x: 0, y: 0, k: 1 };
+
+function applyView() {
+  viewport.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+}
+
+function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+function fit() {
+  const r = canvas.getBoundingClientRect();
+  const k = clamp(Math.min(r.width / BOUNDS.w, r.height / BOUNDS.h), 0.22, 1.6);
+  view.k = k;
+  view.x = (r.width - BOUNDS.w * k) / 2;
+  view.y = (r.height - BOUNDS.h * k) / 2;
+  applyView();
+}
+
+function focusNode(id) {
+  const p = pos.get(id);
+  const r = canvas.getBoundingClientRect();
+  view.x = r.width / 2 - (p.x + NODE_W / 2) * view.k;
+  view.y = r.height / 2 - (p.y + NODE_H / 2) * view.k;
+  applyView();
+}
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k2 = clamp(view.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.22, 2.6);
+  view.x = mx - (mx - view.x) * (k2 / view.k);
+  view.y = my - (my - view.y) * (k2 / view.k);
+  view.k = k2;
+  applyView();
+}, { passive: false });
+
+let drag = null;
+canvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
+  canvas.classList.add('dragging');
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+  if (drag.moved) {
+    view.x = drag.vx + dx;
+    view.y = drag.vy + dy;
+    applyView();
+  }
+});
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const moved = drag.moved;
+  drag = null;
+  canvas.classList.remove('dragging');
+  if (moved) {
+    // swallow the click that follows a pan
+    const block = ev => { ev.stopPropagation(); };
+    canvas.addEventListener('click', block, { capture: true, once: true });
+  }
+});
+
+document.getElementById('btnFit').addEventListener('click', fit);
+document.getElementById('btnReset').addEventListener('click', () => {
+  document.getElementById('q').value = '';
+  query = '';
+  activeModules = new Set(MODULE_ORDER);
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('off', false));
+  selectedId = null;
+  nodeEls.forEach(g => g.classList.remove('sel'));
+  highlight(null);
+  applyFilters();
+  fit();
+});
+
+/* ------------------------------------------------------------------ */
+/* filters                                                             */
+/* ------------------------------------------------------------------ */
+let query = '';
+let activeModules = new Set(MODULE_ORDER);
+let showIsolated = true;
+
+const chipBox = document.getElementById('chips');
+MODULE_ORDER
+  .filter(m => nodes.some(n => n.module === m))
+  .forEach(m => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.dataset.m = m;
+    c.innerHTML = `<span class="dot" style="background:${MODULE_COLORS[m]}"></span>${esc(m)}`;
+    c.title = MODULE_LABELS[m] || m;
+    c.addEventListener('click', () => {
+      if (activeModules.has(m)) activeModules.delete(m); else activeModules.add(m);
+      c.classList.toggle('off', !activeModules.has(m));
+      applyFilters();
+    });
+    chipBox.appendChild(c);
+  });
+
+const isoBtn = document.getElementById('btnIso');
+isoBtn.addEventListener('click', () => {
+  showIsolated = !showIsolated;
+  isoBtn.classList.toggle('on', showIsolated);
+  applyFilters();
+});
+
+function applyFilters() {
+  const q = query.trim().toLowerCase();
+  nodeEls.forEach((g, id) => {
+    const n = byId.get(id);
+    const isoHidden = !showIsolated && n.out.length === 0 && n.in.length === 0;
+    const visible = activeModules.has(n.module) && !isoHidden &&
+      (!q || id.toLowerCase().includes(q));
+    g.classList.toggle('hidden', !visible);
+  });
+  edgeEls.forEach(p => {
+    const a = nodeEls.get(p.dataset.from), b = nodeEls.get(p.dataset.to);
+    p.classList.toggle('hidden', a.classList.contains('hidden') || b.classList.contains('hidden'));
+  });
+}
+
+document.getElementById('q').addEventListener('input', e => {
+  query = e.target.value;
+  applyFilters();
+});
+
+/* ------------------------------------------------------------------ */
+/* level cards                                                         */
+/* ------------------------------------------------------------------ */
+const LEVEL_DESC = {
+  0: '不依赖任何内部头文件的“契约底座”：纯接口 / POD 结构 / 工具函数声明。',
+  1: '直接建立在 L0 之上：公共数据结构、日志、异常封装。',
+  2: '模块级实现契约：传感器抽象、zone 接口、各类控制器。',
+  3: '装配与聚合层：builder、zone、mock，把下层能力组装起来。'
+};
+document.getElementById('levelCards').innerHTML = [...cols.keys()].sort((a, b) => a - b).map(lv => {
+  const list = cols.get(lv);
+  return `<div class="lvl">
+    <div class="h"><b>L${lv}</b><span class="n">${list.length} 个头文件</span></div>
+    <div class="d">${LEVEL_DESC[lv] || '更高层的聚合头文件。'}</div>
+    <div class="l">${list.map(n => `<div>${n.dir === '.' ? '' : `<span style="color:#cbd5e1">${esc(n.dir)}/</span>`}${esc(n.base)}</div>`).join('')}</div>
+  </div>`;
+}).join('');
+
+/* ------------------------------------------------------------------ */
+/* insights                                                            */
+/* ------------------------------------------------------------------ */
+const fanIn = [...nodes].sort((a, b) => b.in.length - a.in.length).slice(0, 6);
+const fanOut = [...nodes].sort((a, b) => b.out.length - a.out.length).slice(0, 6);
+const crossEdges = DATA.edges.filter(e => byId.get(e.from).module !== byId.get(e.to).module).length;
+const internalEdges = DATA.edges.length - crossEdges;
+
+const listHTML = arr => arr.map(n =>
+  `<li><code>${esc(n.id)}</code> — ${n.in.length ? n.in.length + ' 个引用方' : n.out.length + ' 个依赖'}</li>`).join('');
+
+const dbusCppInclude = DATA.cppIncludeCpp.map(([a, b]) => `<code>${esc(a)}</code> 直接 <code>#include</code> 了 <code>${esc(b)}</code>`).join('<br>');
+
+document.getElementById('insights').innerHTML = `
+  <div class="card">
+    <h4>✅ 依赖图是一张 DAG：0 个循环</h4>
+    <p>${nodes.length} 个头文件、${DATA.edges.length} 条本地 include 边，Tarjan 强连通分量检测结果全部为单点，
+    最大分层深度 L${maxLevel}。这意味着任意头文件都可以独立编译，不存在头文件互相包含死锁。</p>
+    <p>${internalEdges} 条边发生在模块内部，${crossEdges} 条边跨模块（占 ${Math.round(crossEdges / DATA.edges.length * 100)}%）。</p>
+  </div>
+
+  <div class="card">
+    <h4>🏛 编译期枢纽：扇入最高的头文件</h4>
+    <p>改动这些文件的代价最大 —— 任何一个变动都会波及大半棵树。</p>
+    <ul>${listHTML(fanIn)}</ul>
+  </div>
+
+  <div class="card">
+    <h4>🕸 扇出最高的聚合节点</h4>
+    <p>这些头文件是“装配点”，把下层能力拼在一起；它们本身也最容易随下层变动而失效。</p>
+    <ul>${listHTML(fanOut)}</ul>
+  </div>
+
+  <div class="card">
+    <h4>⚠️ 值得注意的耦合</h4>
+    <ul>
+      <li><code>interfaces.hpp</code> 被 <b>${byId.get('interfaces.hpp') ? byId.get('interfaces.hpp').in.length : 0}</b> 个头文件直接包含，
+          横跨 <code>dbus / notimpl / pid / sensors / sysfs / test</code> 六个模块，是整个代码库的公共底座。</li>
+      <li><code>conf.hpp</code>（配置模型）同时被 <code>dbus</code>、<code>pid</code>、<code>sensors</code> 三个方向的头文件引用，
+          属于跨模块数据契约。</li>
+      <li><code>failsafeloggers/builder.hpp</code> 只依赖 <code>pid/zone_interface.hpp</code>，
+          说明“失效保护日志构建器”直接绑定了 PID 的 Zone 抽象，是最短的一条隐式耦合链。</li>
+      ${dbusCppInclude ? `<li>发现一处“源码被当头文件包含”：${dbusCppInclude}（这是唯一的 .cpp → .cpp 包含，虽不属于头文件图，但会造成重复定义风险）。</li>` : ''}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>🧪 测试桩隔离良好</h4>
+    <p><code>test/</code> 下的 7 个头文件只<b>单向依赖</b>生产代码（<code>interfaces.hpp</code>、<code>sensors/sensor.hpp</code>、
+    <code>pid/zone_interface.hpp</code>、<code>dbus/dbushelper_interface.hpp</code>），没有任何生产头文件反向包含测试桩，
+    因此单元测试不会污染产品构建。</p>
+    <p>孤立头文件 ${isolated.length} 个：${isolated.map(n => `<code>${esc(n.base)}</code>`).join('、')}
+    —— 它们不参与头文件间的 include 关系，只被 .cpp 直接使用（例如 <code>hoststatemonitor.hpp</code>、
+    <code>errors/exception.hpp</code>、<code>sensors/build_utils.hpp</code>）。</p>
+  </div>
+
+  <div class="card">
+    <h4>📦 适配层结构清晰</h4>
+    <p>所有“获取/写入传感器值”的实现都实现同一个 <code>interfaces.hpp</code> 中的抽象：
+    <code>dbus/</code>、<code>sysfs/</code>、<code>notimpl/</code>、<code>sensors/host.hpp</code> 是平级的四种适配器，
+    共享 <code>ReadInterface / WriteInterface</code> 契约，新增数据源只需新增一个适配目录，不需要改动 PID 核心。</p>
+    <p>反向看，<code>pid/</code> 只依赖 <code>sensors/sensor.hpp</code> 与 <code>interfaces.hpp</code>，
+    不直接依赖 <code>dbus/</code> 或 <code>sysfs/</code> —— 端口/适配器边界成立。</p>
+  </div>
+`;
+
+/* ------------------------------------------------------------------ */
+/* module coupling matrix                                              */
+/* ------------------------------------------------------------------ */
+const mods = MODULE_ORDER.filter(m => nodes.some(n => n.module === m));
+const mat = {};
+mods.forEach(a => { mat[a] = {}; mods.forEach(b => mat[a][b] = 0); });
+DATA.edges.forEach(e => {
+  const a = byId.get(e.from).module, b = byId.get(e.to).module;
+  if (mat[a] && mat[a][b] !== undefined) mat[a][b]++;
+});
+const maxCell = Math.max(1, ...mods.flatMap(a => mods.map(b => mat[a][b])));
+
+let mHtml = '<table class="matrix"><thead><tr><th></th>';
+mods.forEach(m => { mHtml += `<th style="color:${MODULE_COLORS[m]}">${esc(m)}</th>`; });
+mHtml += '</tr></thead><tbody>';
+mods.forEach(a => {
+  mHtml += `<tr><th class="rowh" style="color:${MODULE_COLORS[a]}">${esc(a)}</th>`;
+  mods.forEach(b => {
+    const v = mat[a][b];
+    if (!v) { mHtml += '<td class="zero">·</td>'; return; }
+    const t = v / maxCell;
+    const bg = `rgba(37,99,235,${(0.10 + 0.62 * t).toFixed(2)})`;
+    mHtml += `<td style="background:${bg};color:${t > 0.45 ? '#fff' : '#1e293b'}" title="${esc(a)} → ${esc(b)}: ${v}">${v}</td>`;
+  });
+  mHtml += '</tr>';
+});
+mHtml += '</tbody></table>';
+document.getElementById('matrixBox').innerHTML = mHtml;
+
+/* ------------------------------------------------------------------ */
+/* adjacency table                                                     */
+/* ------------------------------------------------------------------ */
+document.getElementById('tbody').innerHTML = [...nodes]
+  .sort((a, b) => mRank(a.module) - mRank(b.module) || a.id.localeCompare(b.id))
+  .map(n => `<tr>
+    <td class="path" title="${esc(n.id)}">${esc(n.id)}</td>
+    <td><span class="mchip" style="background:${MODULE_COLORS[n.module]}">${esc(n.module)}</span></td>
+    <td class="num">L${n.level}</td>
+    <td class="deps">${n.out.length ? n.out.map(esc).join('<br>') : '<span style="color:#cbd5e1">—</span>'}</td>
+    <td class="num">${n.out.length}</td>
+    <td class="num">${n.in.length}</td>
+    <td class="num">${srcUsers(n.id).length}</td>
+  </tr>`).join('');
+
+/* ------------------------------------------------------------------ */
+/* boot                                                                */
+/* ------------------------------------------------------------------ */
+applyFilters();
+fit();
+window.addEventListener('resize', () => { /* keep current view */ });
+</script>
+</body>
+</html>

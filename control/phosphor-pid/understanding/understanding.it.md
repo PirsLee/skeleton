@@ -328,3 +328,40 @@ mgmr.sensorsByType["margin"] = {
         { 1, shared_ptr<DbusPidZone>{} }
     };
 
+
+# 数据模型
+
+## 配置模型pid_control::conf
+
+    配置模型的设计思想为：
+
+    - 分离传感器配置与PID配置
+
+    - 分层控制
+
+        Thermal PID输出setpoint --> Fan PID根据setpoint计算PWM --> 风扇执行。
+
+        ZoneConfig中的accumulateSetpoint控制fan PID的聚合方式
+
+    - 容错机制
+
+        timeout / unavailavbleAsFailed / missingIsAcceptable / ignoreFailIfHostOff共同定义了传感器失效时的行为，配合failsafePercent确保系统安全
+
+    - 灵活的时间调度
+
+        CycleTime允许不同Zone有不同的控制频率，updateThermalsTimesMS进一步区分fast loop风扇和slow loop温度 
+
+- struct SensorConfig       对应json中的“sensors”:[]
+
+- struct SensorInput
+
+- struct ControllerInfo     对应json中的“pids”:[]
+
+- struct CycleTime
+
+- struct ZoneConfig         对应json中的“zones”:[]
+
+- struct PIDConfig
+
+# zone的设计
+

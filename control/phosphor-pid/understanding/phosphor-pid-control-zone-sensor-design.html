@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>phosphor-pid-control · Zone 与 Sensor 模型设计解析</title>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --panel:#ffffff;
+    --ink:#0f172a;
+    --ink2:#334155;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --line2:#cbd5e1;
+    --accent:#2563eb;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:14px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1320px;margin:0 auto;padding:0 28px 80px}
+
+  /* ---------- header ---------- */
+  header.top{padding:52px 0 24px;border-bottom:1px solid var(--line);margin-bottom:24px}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;
+  }
+  h1{margin:10px 0 6px;font-size:30px;line-height:1.25;letter-spacing:-.02em;font-weight:700}
+  h1 .sep{color:var(--line2);font-weight:300;margin:0 6px}
+  .sub{color:var(--muted);font-size:14px;max-width:960px;margin:0}
+  .sub code,code.k{font-family:var(--mono);font-size:12.5px;background:#eef2f7;
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--ink2)}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:22px 0 8px}
+  @media(max-width:900px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:13px 15px;position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bar,var(--accent))}
+  .stat .n{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+  .stat .n small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+  .stat .l{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+  /* ---------- toc ---------- */
+  .toc{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 0}
+  .toc a{
+    font-family:var(--mono);font-size:11.5px;text-decoration:none;color:var(--ink2);
+    border:1px solid var(--line2);background:#fff;border-radius:999px;padding:4px 11px;
+    transition:.14s;white-space:nowrap;
+  }
+  .toc a:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff}
+  .toc a.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* ---------- section ---------- */
+  section{margin-bottom:52px;scroll-margin-top:16px}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-n{font-family:var(--mono);font-size:11px;color:var(--accent);
+    border:1px solid #bfdbfe;background:#eff6ff;border-radius:5px;padding:1px 7px;font-weight:600}
+  .sec-t{font-size:18px;font-weight:650;letter-spacing:-.01em}
+  .sec-d{color:var(--muted);font-size:13px;margin:0 0 20px;max-width:1000px}
+  h3{font-size:14.5px;font-weight:650;margin:26px 0 10px;letter-spacing:-.005em}
+  h3 .fn{font-family:var(--mono);font-size:12px;color:#94a3b8;font-weight:400;margin-left:8px}
+  p{margin:10px 0}
+
+  /* ---------- flow band ---------- */
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+  .band{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:13px 0;align-items:start}
+  .band + .band{border-top:1px dashed var(--line)}
+  .band-l{font-size:11.5px;color:var(--muted);font-weight:600;padding-top:5px;letter-spacing:.02em}
+  .band-v{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-family:var(--mono);font-size:11.5px;line-height:1.5;border:1px solid var(--line2);
+    border-radius:6px;padding:3px 9px;background:#fff;color:var(--ink2);white-space:nowrap}
+  .chip.src{background:#f8fafc;color:var(--muted)}
+  .chip.conf{border-color:#bae6fd;background:#f0f9ff;color:#0369a1}
+  .chip.algo{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+  .chip.rt{border-color:#ddd6fe;background:#f5f3ff;color:#6d28d9}
+  .chip.val{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
+  .chip.out{border-color:#fed7aa;background:#fff7ed;color:#c2410c}
+  .band-arrow{display:grid;grid-template-columns:110px 1fr;gap:16px;height:16px}
+  .band-arrow span{grid-column:2;font-size:10.5px;color:#94a3b8;font-family:var(--mono);
+    display:flex;align-items:center;gap:8px}
+  .band-arrow span::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- diagram ---------- */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:22px;overflow-x:auto}
+  .layer{border:1px dashed var(--line2);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fcfdff}
+  .layer-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:#94a3b8;margin-bottom:9px;font-weight:600}
+  .layer-tag b{color:var(--accent);font-weight:600}
+  .layer.bare{border-style:solid;background:#fff}
+  .boxes{display:flex;flex-wrap:wrap;gap:9px}
+  .box{
+    border:1px solid var(--line2);border-radius:8px;padding:9px 12px;background:#fff;
+    font-size:12px;color:var(--ink2);line-height:1.5;min-width:0;
+  }
+  .box .bn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink);display:block}
+  .box .bd{font-size:11px;color:var(--muted);margin-top:2px}
+  .box.port{border-color:#a7f3d0;background:#ecfdf5}
+  .box.port .bn{color:#047857}
+  .box.abs{border-color:#ddd6fe;background:#f5f3ff}
+  .box.abs .bn{color:#6d28d9}
+  .box.imp{border-color:#bfdbfe;background:#eff6ff}
+  .box.imp .bn{color:#1d4ed8}
+  .box.conc{border-color:#fed7aa;background:#fff7ed}
+  .box.conc .bn{color:#c2410c}
+  .box.own{border-color:#0f172a;background:#0f172a}
+  .box.own .bn,.box.own .bd{color:#e2e8f0}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--muted);margin-top:14px;
+    padding-top:12px;border-top:1px dashed var(--line)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  /* ---------- steps ---------- */
+  .steps{counter-reset:s;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 0}
+  .step{display:grid;grid-template-columns:38px 1fr;gap:12px;padding:12px 18px;position:relative}
+  .step + .step{border-top:1px solid #f1f5f9}
+  .step::before{
+    counter-increment:s;content:counter(s,decimal-leading-zero);
+    font-family:var(--mono);font-size:11px;color:#94a3b8;padding-top:3px;
+  }
+  .step .sh{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+  .step .sh em{font-style:normal;color:#94a3b8;font-weight:400}
+  .step .sd{font-size:12.5px;color:var(--ink2);margin-top:3px}
+  .step .sd code{font-family:var(--mono);font-size:11.5px;background:#f1f5f9;border-radius:3px;padding:0 4px}
+  .step.hot::before{color:var(--accent);font-weight:700}
+
+  /* ---------- decision ---------- */
+  .dec{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:9px;padding:14px 18px;margin:12px 0}
+  .dec .dq{font-size:13px;font-weight:650;color:var(--ink);margin:0 0 6px}
+  .dec .dq::before{
+    content:"Q";font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;
+    background:var(--accent);border-radius:4px;padding:1px 5px;margin-right:8px;vertical-align:2px;
+  }
+  .dec p{font-size:12.5px;color:var(--ink2);margin:6px 0}
+  .dec .why,.dec .cost{font-size:12px;display:grid;grid-template-columns:64px 1fr;gap:8px;margin-top:7px}
+  .dec .why b,.dec .cost b{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;padding-top:2px}
+  .dec .why b{color:#047857}
+  .dec .cost b{color:#b45309}
+  .dec .cost{color:#78350f}
+  .dec .why span{color:var(--ink2)}
+
+  /* ---------- code ---------- */
+  pre{margin:12px 0;background:#0f172a;color:#e2e8f0;border-radius:9px;padding:14px 16px;
+    overflow-x:auto;font-family:var(--mono);font-size:11.8px;line-height:1.65}
+  pre .c{color:#94a3b8}
+  pre .k{color:#c4b5fd}
+  pre .t{color:#7dd3fc}
+  pre .s{color:#86efac}
+  pre .n{color:#fbbf24}
+
+  /* ---------- tables ---------- */
+  .tbl{background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:12.3px}
+  th{text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;
+    padding:9px 14px;background:#f8fafc;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:8px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top;line-height:1.55}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fcfdff}
+  td.m{font-family:var(--mono);font-size:11.5px;color:#0f172a}
+  td.m2{font-family:var(--mono);font-size:11px;color:#7c3aed}
+  td.g{font-family:var(--mono);font-size:11px;color:#047857}
+  td.o{font-family:var(--mono);font-size:11px;color:#c2410c}
+  td.n{color:var(--ink2);font-size:12px}
+  .tag{font-size:10.5px;font-weight:600;border-radius:4px;padding:1px 7px;white-space:nowrap;
+    background:#f1f5f9;color:var(--ink2);border:1px solid var(--line)}
+  .tag.ok{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+  .tag.no{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+  .tag.mid{background:#fffbeb;color:#b45309;border-color:#fde68a}
+
+  /* ---------- note ---------- */
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:12px 16px;
+    font-size:12.5px;color:#78350f;margin-top:14px}
+  .note b{color:#92400e}
+  .info{background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:12px 16px;
+    font-size:12.5px;color:#1e3a8a;margin-top:14px}
+  .info b{color:#1d4ed8}
+
+  /* ---------- clock ---------- */
+  .clock{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .track{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center;margin:8px 0}
+  .track-l{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+  .cells{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+  .cell{height:22px;border-radius:3px;background:#f1f5f9;position:relative}
+  .cell.on{background:#bfdbfe}
+  .cell.on2{background:#ddd6fe}
+  .cell span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:9px;color:#1e3a8a}
+  .clock .cap{font-size:11.5px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:11.5px;
+    color:#94a3b8;display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--mono)}
+  footer a{color:var(--accent);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Design Rationale</div>
+  <h1>phosphor-pid-control <span class="sep">/</span> Zone 与 Sensor 模型设计解析</h1>
+  <p class="sub">
+    从作者视角还原 <code>sensors/</code> 与 <code>pid/</code> 两个模型的<strong>设计意图</strong>：
+    为什么 <code>Sensor</code> 被做得这么薄、为什么 <code>SensorManager</code> 是全局的而 <code>DbusPidZone</code> 是一区一个、
+    为什么 <code>ZoneInterface</code> 只有纯虚函数、fail-safe 为什么用「集合是否为空」而不是一个布尔标志。
+    每一节都以「问题 → 选择 → 代价」的结构给出决策依据。
+  </p>
+
+  <div class="stats">
+    <div class="stat" style="--bar:#6d28d9"><div class="n">3</div><div class="l">Sensor 抽象层</div></div>
+    <div class="stat" style="--bar:#2563eb"><div class="n">2</div><div class="l">所有权中心</div></div>
+    <div class="stat" style="--bar:#047857"><div class="n">30<small>+</small></div><div class="l">ZoneInterface 纯虚函数</div></div>
+    <div class="stat" style="--bar:#c2410c"><div class="n">24</div><div class="l">DbusPidZone 聚合字段</div></div>
+    <div class="stat" style="--bar:#7c3aed"><div class="n">2</div><div class="l">级缓存（输入 / 输出）</div></div>
+    <div class="stat" style="--bar:#b45309"><div class="n">3</div><div class="l">层 fail-safe 兜底</div></div>
+  </div>
+
+  <nav class="toc">
+    <a href="#s0">00 骨架速览</a>
+    <a href="#s1">01 分层与所有权</a>
+    <a href="#s2">02 Sensor 三层抽象</a>
+    <a href="#s3">03 路径即类型</a>
+    <a href="#s4">04 全局注册表</a>
+    <a href="#s5">05 Zone 契约分离</a>
+    <a href="#s6">06 控制周期</a>
+    <a href="#s7">07 fail-safe 模型</a>
+    <a href="#s8">08 双级缓存</a>
+    <a href="#s9">09 setpoint 仲裁</a>
+    <a href="#s10">10 配置两段式</a>
+    <a href="#s11">11 取舍总表</a>
+    <a href="#s12">12 阅读地图</a>
+  </nav>
+</header>
+
+<!-- ================= 00 ================= -->
+<section id="s0">
+  <div class="sec-h"><span class="sec-n">00</span><span class="sec-t">设计骨架速览</span></div>
+  <p class="sec-d">
+    整个 daemon 的数据流可以压成一条七段流水线。作者的取向非常明确：<b>配置模型（<code>conf::*</code>）与运行模型（<code>Sensor</code>/<code>Zone</code>）彻底分离</b>，
+    中间由一对 builder（<code>buildSensors</code> / <code>buildZones</code>）完成「字符串 → 对象」的翻译。运行期只有一个可变状态中心（Zone），传感器只是被查询的只读资源。
+  </p>
+
+  <div class="flow">
+    <div class="band">
+      <div class="band-l">配置源</div>
+      <div class="band-v">
+        <span class="chip src">fan-info.json</span>
+        <span class="chip src">entity-manager / D-Bus 动态传感器</span>
+        <span class="chip src">/etc/thermal.d/setpoint（tuning）</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>nlohmann::json + from_json</span></div>
+    <div class="band">
+      <div class="band-l">配置模型</div>
+      <div class="band-v">
+        <span class="chip conf">conf::SensorConfig</span>
+        <span class="chip conf">conf::ControllerInfo</span>
+        <span class="chip conf">conf::SensorInput</span>
+        <span class="chip conf">conf::ZoneConfig</span>
+        <span class="chip conf">conf::CycleTime</span>
+        <span class="chip conf">ec::pidinfo / ec::StepwiseInfo</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>buildSensors() / buildZones() —— 「字符串 → 对象」唯一翻译点</span></div>
+    <div class="band">
+      <div class="band-l">运行模型</div>
+      <div class="band-v">
+        <span class="chip rt">SensorManager（全局，独占 Sensor）</span>
+        <span class="chip rt">DbusPidZone（每 zone 一个，聚合根）</span>
+        <span class="chip rt">Controller ×N（Fan / Thermal / Stepwise）</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>pidControlLoop(zone, timer) —— boost::asio 递归定时器</span></div>
+    <div class="band">
+      <div class="band-l">每周期动作</div>
+      <div class="band-v">
+        <span class="chip algo">updateFanTelemetry()</span>
+        <span class="chip algo">updateSensors()</span>
+        <span class="chip algo">processThermals()</span>
+        <span class="chip algo">determineMaxSetPointRequest()</span>
+        <span class="chip algo">processFans()</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>ReadInterface / WriteInterface —— 唯一的硬件接缝</span></div>
+    <div class="band">
+      <div class="band-l">适配器</div>
+      <div class="band-v">
+        <span class="chip out">SysFsRead / SysFsWrite</span>
+        <span class="chip out">DbusPassive / DbusActive</span>
+        <span class="chip out">DbusWrite / DbusWritePercent</span>
+        <span class="chip out">HostSensor（Sensor.Value D-Bus server）</span>
+        <span class="chip out">ReadOnlyNoExcept / WriteOnly</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="info">
+    <b>一句话总结：</b>Zone 是「状态 + 策略」，Sensor 是「身份 + I/O 能力」，Controller 是「算法」。
+    三者的耦合被收紧到 <code>interfaces.hpp</code> 一处；<code>pid/</code> 永远不 <code>#include</code> <code>dbus/</code> 或 <code>sysfs/</code>，
+    这条不变量是整个设计能成立的根基。
+  </div>
+</section>
+
+<!-- ================= 01 ================= -->
+<section id="s1">
+  <div class="sec-h"><span class="sec-n">01</span><span class="sec-t">分层与所有权</span></div>
+  <p class="sec-d">
+    这是理解全篇的关键一张图：<b>两个所有权中心、一个只读依赖方向</b>。
+    <code>main.cpp</code> 里的 <code>std::optional&lt;SensorManager&gt; mgmr</code> 是全局唯一实例；
+    Zone 通过 <code>const SensorManager&amp;</code> 引用它，绝不持有 Sensor 本身。
+  </p>
+
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-tag">L0 · 进程级（main.cpp）</div>
+      <div class="boxes">
+        <div class="box own"><span class="bn">SensorManager mgmr</span><span class="bd">std::optional，进程内唯一</span></div>
+        <div class="box own"><span class="bn">zones: unordered_map&lt;int64_t, shared_ptr&lt;ZoneInterface&gt;&gt;</span><span class="bd">按 zone id 索引</span></div>
+        <div class="box"><span class="bn">timer: boost::asio::steady_timer</span><span class="bd">每个 zone 一条循环</span></div>
+      </div>
+    </div>
+
+    <div class="layer">
+      <div class="layer-tag">L1 · 抽象契约（header-only，无状态）</div>
+      <div class="boxes">
+        <div class="box abs"><span class="bn">Sensor</span><span class="bd">read()/write() 纯虚 + 身份/超时策略</span></div>
+        <div class="box port"><span class="bn">ReadInterface / WriteInterface</span><span class="bd">interfaces.hpp，端口</span></div>
+        <div class="box abs"><span class="bn">ZoneInterface</span><span class="bd">30+ 纯虚，零成员变量</span></div>
+        <div class="box abs"><span class="bn">Controller</span><span class="bd">process() 纯虚</span></div>
+      </div>
+    </div>
+
+    <div class="layer bare">
+      <div class="layer-tag">L2 · 具体实现</div>
+      <div class="boxes">
+        <div class="box imp"><span class="bn">PluggableSensor</span><span class="bd">注入 reader/writer</span></div>
+        <div class="box imp"><span class="bn">HostSensor</span><span class="bd">同时是 Sensor.Value server</span></div>
+        <div class="box conc"><span class="bn">DbusPidZone</span><span class="bd">聚合根 + Mode/Debug/Process D-Bus 对象</span></div>
+        <div class="box conc"><span class="bn">PIDController / FanController / ThermalController / StepwiseController</span><span class="bd">算法族</span></div>
+      </div>
+    </div>
+
+    <div class="layer bare">
+      <div class="layer-tag">L3 · 适配器（唯一接触外部世界）</div>
+      <div class="boxes">
+        <div class="box out"><span class="bn">SysFsRead / SysFsWrite / SysFsWritePercent</span></div>
+        <div class="box out"><span class="bn">DbusPassive / DbusPassiveRedundancy / DbusActive</span></div>
+        <div class="box out"><span class="bn">DbusWrite / DbusWritePercent / ReadOnlyNoExcept / WriteOnly</span></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:#0f172a"></i>所有权中心</span>
+      <span><i style="background:#ddd6fe"></i>抽象契约</span>
+      <span><i style="background:#a7f3d0"></i>端口（port）</span>
+      <span><i style="background:#bfdbfe"></i>组合实现</span>
+      <span><i style="background:#fed7aa"></i>适配器（adapter）</span>
+    </div>
+  </div>
+
+  <h3>谁拥有什么<span class="fn">ownership table</span></h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:200px">持有者</th><th style="width:250px">持有内容</th><th>生命周期 / 理由</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="m">SensorManager</td>
+          <td class="n"><code>map&lt;string, unique_ptr&lt;Sensor&gt;&gt;</code><br><code>map&lt;string, vector&lt;string&gt;&gt;</code> 按 type 分组</td>
+          <td class="n"><b>全局唯一、独占所有权。</b>一个物理传感器在整个 daemon 里只实例化一次，被多个 zone 按名字共享。避免重复建立 D-Bus match 与重复 sysfs 打开。</td>
+        </tr>
+        <tr>
+          <td class="m">DbusPidZone</td>
+          <td class="n"><code>const SensorManager&amp;</code>（只引用）<br><code>vector&lt;unique_ptr&lt;Controller&gt;&gt;</code> 两组：<code>_fans</code> / <code>_thermals</code><br>缓存、fail-safe 表、setpoint、rpmCeilings</td>
+          <td class="n"><b>一 zone 一份全部可变状态。</b>所有运行期会变化的东西都收敛在 Zone 里，Controller 只做无状态计算并与 owner 交互（<code>_owner-&gt;getCachedValue()</code> 等）。</td>
+        </tr>
+        <tr>
+          <td class="m">Controller</td>
+          <td class="n"><code>ZoneInterface* _owner</code>（裸指针 + 非拥有）</td>
+          <td class="n"><b>反向依赖抽象。</b>Controller 不认识 <code>DbusPidZone</code>，只认识 <code>ZoneInterface</code>；切 zone 实现不影响算法。</td>
+        </tr>
+        <tr>
+          <td class="m">PluggableSensor</td>
+          <td class="n"><code>unique_ptr&lt;ReadInterface&gt;</code><br><code>unique_ptr&lt;WriteInterface&gt;</code></td>
+          <td class="n"><b>I/O 是组合进来的。</b>同一个 Sensor 壳子既能读 sysfs 也能读 D-Bus，取决于 builder 塞了谁。</td>
+        </tr>
+        <tr>
+          <td class="m">main.cpp</td>
+          <td class="n"><code>optional&lt;SensorManager&gt;</code>、<code>zones</code> 容器、<code>isCanceling</code></td>
+          <td class="n"><b>装配 + 信号处理。</b>不参与任何控制逻辑，只负责构造、启动循环、响应 SIGTERM。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dec">
+    <p class="dq">为什么 SensorManager 是全局单例，而 Zone 是每区一个？</p>
+    <p>因为这两类对象的<b>共享维度不同</b>：传感器是物理资源（风扇、温度点），天然被多个 zone 同时观测，重复实例化会带来 D-Bus match 重复与 sysfs fd 重复；
+    而 zone 是控制单元，每个 zone 的 setpoint、fail-safe 表、日志文件都是私有的，没有共享必要，强行共享反而要加锁。</p>
+    <div class="why"><b>收益</b><span>Sensor 的读取路径零同步；Zone 的状态无锁（单线程 asio 回调驱动）。</span></div>
+    <div class="cost"><b>代价</b><span>Zone 只能按名字查传感器（<code>_mgr.getSensor(name)</code>，名字错了抛异常），编译期无法校验 zone 引用的传感器是否存在——这个校验被推迟到 <code>buildZones</code> 的运行时（源码里还留着 <code>TODO(venture): Need to check if input is known to the SensorManager</code>）。</span></div>
+  </div>
+</section>
+
+<!-- ================= 02 ================= -->
+<section id="s2">
+  <div class="sec-h"><span class="sec-n">02</span><span class="sec-t">Sensor 的三层抽象：薄基类 + 策略注入 + 双重身份</span></div>
+  <p class="sec-d">
+    <code>sensors/</code> 只有 8 个文件、628 行，但把「读什么」「怎么写」「谁发布的」三件事拆得干干净净。
+    作者的策略是：<b>基类只放身份与策略，绝不放值</b>；值永远由读取的那一刻产生，由 Zone 缓存。
+  </p>
+
+  <h3>2.1 第一层：<code>Sensor</code> —— 只存身份与策略<span class="fn">sensors/sensor.hpp · 83 行</span></h3>
+  <pre><span class="k">class</span> <span class="t">Sensor</span>
+{
+  <span class="k">public</span>:
+    <span class="c">// 唯一一处「类型 → 策略」的默认推导：风扇没有超时，其他 2 秒</span>
+    <span class="k">static</span> <span class="t">int64_t</span> getDefaultTimeout(<span class="k">const</span> std::string&amp; type)
+    {
+        <span class="k">if</span> (type == <span class="s">"fan"</span>) { <span class="k">return</span> <span class="n">0</span>; }
+        <span class="k">return</span> <span class="n">2</span>;
+    }
+
+    <span class="t">Sensor</span>(<span class="k">const</span> std::string&amp; name, <span class="t">int64_t</span> timeout,
+           <span class="k">bool</span> ignoreFailIfHostOff = <span class="k">false</span>);
+
+    <span class="c">// 纯虚：唯一的 I/O 契约</span>
+    <span class="k">virtual</span> <span class="t">ReadReturn</span> read() = <span class="n">0</span>;
+    <span class="k">virtual</span> <span class="k">void</span> write(<span class="t">double</span> value) = <span class="n">0</span>;
+
+    <span class="c">// 带默认实现的扩展点：老适配器不用改</span>
+    <span class="k">virtual</span> <span class="k">void</span> write(<span class="t">double</span> value, <span class="k">bool</span> force, <span class="t">int64_t</span>* written)
+    { write(value); }
+    <span class="k">virtual</span> <span class="k">bool</span> getFailed() { <span class="k">return</span> <span class="k">false</span>; }
+    <span class="k">virtual</span> std::string getFailReason() { <span class="k">return</span> <span class="s">"Unimplemented"</span>; }
+
+  <span class="k">private</span>:
+    std::string _name;
+    <span class="t">int64_t</span> _timeout;
+    <span class="k">bool</span> _ignoreFailIfHostOff;   <span class="c">// 主机下电时不判失效</span>
+};</pre>
+
+  <div class="dec">
+    <p class="dq">为什么基类不保存「当前值」？</p>
+    <p>因为值的生命周期与传感器对象的生命周期<b>不同</b>。传感器对象常驻，但值每 100ms 刷新一次，且「旧值」本身是有语义的（超时判定要用 <code>ReadReturn::updated</code> 时间戳）。
+    如果把值放在 Sensor 里，Zone 就得反过去问 Sensor 要时间戳、要两个 zone 各自加锁；作者选择让 <code>read()</code> 返回一个<b>自描述的值对象</b>，Zone 拿到就存进自己的缓存，Sensor 保持无状态。</p>
+    <div class="why"><b>收益</b><span>Sensor 可被任意多个 zone 并发调用而不需要锁；类型系统上不可能出现「两个 zone 看到不同的当前值」。</span></div>
+    <div class="cost"><b>代价</b><span>每次读取都要走一遍适配器（可能是一次 D-Bus 调用），无法做 Sensor 内部的一次性缓存。</span></div>
+  </div>
+
+  <p><code>ReadReturn</code> 的设计正是这个决策的物化——它把「值 + 时间 + 原始值」打包：</p>
+  <pre><span class="k">struct</span> <span class="t">ReadReturn</span>
+{
+    <span class="t">double</span> value = <span class="t">NaN</span>;                       <span class="c">// 归一化后的值（用于 PID 计算）</span>
+    std::chrono::high_resolution_clock::time_point updated;  <span class="c">// 采样时刻（超时判据）</span>
+    <span class="t">double</span> unscaled = value;                  <span class="c">// 原始值（RPM / 裸温度）</span>
+};</pre>
+
+  <h3>2.2 第二层：<code>PluggableSensor</code> —— 策略模式，I/O 由外部注入<span class="fn">sensors/pluggable.hpp · 39 行</span></h3>
+  <pre><span class="k">class</span> <span class="t">PluggableSensor</span> : <span class="k">public</span> <span class="t">Sensor</span>
+{
+  <span class="k">public</span>:
+    <span class="c">// “A Sensor that can use any reader or writer you provide.”</span>
+    <span class="t">PluggableSensor</span>(<span class="k">const</span> std::string&amp; name, <span class="t">int64_t</span> timeout,
+                    std::unique_ptr&lt;<span class="t">ReadInterface</span>&gt; reader,
+                    std::unique_ptr&lt;<span class="t">WriteInterface</span>&gt; writer,
+                    <span class="k">bool</span> ignoreFailIfHostOff = <span class="k">false</span>);
+
+    <span class="t">ReadReturn</span> read() <span class="k">override</span> { <span class="k">return</span> _reader-&gt;read(); }
+    <span class="k">void</span> write(<span class="t">double</span> value) <span class="k">override</span> { _writer-&gt;write(value); }
+
+  <span class="k">private</span>:
+    std::unique_ptr&lt;<span class="t">ReadInterface</span>&gt; _reader;
+    std::unique_ptr&lt;<span class="t">WriteInterface</span>&gt; _writer;
+};</pre>
+  <p>
+    这是整个代码库里<b>最关键的 8 行</b>：它把 <code>Sensor</code> 的继承体系从「N×M 种组合」压成「N + M 个适配器」。
+    读的维度有 4 种（sysfs / D-Bus passive / D-Bus active / write-only），写的维度有 5 种（sysfs 原始 / sysfs 百分比 / D-Bus 原始 / D-Bus 百分比 / 只读），
+    如果按多重继承做就是 20 个类；用注入只需要 9 个适配器类 + 1 个组合壳。
+  </p>
+
+  <h3>2.3 第三层：<code>HostSensor</code> —— 既是传感器，又是 D-Bus 服务<span class="fn">sensors/host.hpp · 61 行</span></h3>
+  <pre><span class="k">class</span> <span class="t">HostSensor</span> : <span class="k">public</span> <span class="t">Sensor</span>,
+                  <span class="k">public</span> <span class="t">ValueObject</span>   <span class="c">// = ServerObject&lt;Sensor::server::Value&gt;</span>
+{
+  <span class="k">public</span>:
+    <span class="k">static</span> std::unique_ptr&lt;<span class="t">Sensor</span>&gt; createTemp(
+        <span class="k">const</span> std::string&amp; name, <span class="t">int64_t</span> timeout, sdbusplus::bus_t&amp; bus,
+        <span class="k">const</span> <span class="k">char</span>* objPath, <span class="k">bool</span> defer,
+        <span class="k">bool</span> ignoreFailIfHostOff = <span class="k">false</span>);
+
+    <span class="t">void</span> value(<span class="t">double</span> v) <span class="k">override</span>;   <span class="c">// 外部写进来（属性 setter）</span>
+    <span class="t">ReadReturn</span> read() <span class="k">override</span>;          <span class="c">// 读自己缓存的 _value</span>
+    <span class="k">void</span> write(<span class="t">double</span> value) <span class="k">override</span>;
+    <span class="k">bool</span> getFailed() <span class="k">override</span>;
+
+  <span class="k">private</span>:
+    std::mutex _lock;                <span class="c">// 保护 _updated 与 _value 的原子性</span>
+    std::chrono::...::time_point _updated;
+    <span class="t">double</span> _value = <span class="n">0</span>;
+};</pre>
+
+  <div class="dec">
+    <p class="dq">为什么 <code>HostSensor</code> 要同时继承 <code>Sensor</code> 和 <code>ValueObject</code>？</p>
+    <p>因为它描述的是「<b>外部系统主动推给我们的传感器</b>」——宿主 BIOS / OEM 通过 <code>/xyz/openbmc_project/extsensors/</code> 命名空间下的 <code>Sensor.Value</code> 接口把温度写进来。
+    对 Zone 而言它就是一个普通传感器（<code>read()</code> 返回上次推来的值）；对外部系统而言它是一个可写的 D-Bus 属性。
+    双继承让这两种身份共享同一份状态，而不是让 Zone 去订阅一个 D-Bus 信号再同步到别处。</p>
+    <div class="why"><b>收益</b><span>外部推值路径最短：D-Bus setter → <code>_value</code> → Zone 的 <code>read()</code>，中间无队列无拷贝。</span></div>
+    <div class="cost"><b>代价</b><span>这是全库唯一需要 <code>std::mutex</code> 的传感器类：D-Bus 服务的 setter 线程与 PID 循环线程不同源，必须保护 <code>_updated</code> + <code>_value</code> 这一对（只保护一个会产生「新值配旧时间戳」的撕裂）。</span></div>
+  </div>
+
+  <div class="note">
+    <b>注意 <code>HostSensor::_value</code> 初值 = 0：</b>源码注释明确写了「a 0 value is ignored in <code>FanController::inputProc()</code>」。
+    也就是说 0 被当作「尚未有值」的哨兵，而不是一个合法转速。这是作者在缺少「可选值」类型时的务实取舍，也让「主机还没启动」这个状态自动退化为安全侧。
+  </div>
+</section>
+
+<!-- ================= 03 ================= -->
+<section id="s3">
+  <div class="sec-h"><span class="sec-n">03</span><span class="sec-t">路径字符串即类型：<code>build_utils</code> 的前缀派发</span></div>
+  <p class="sec-d">
+    配置里只有 <code>readPath</code> / <code>writePath</code> 两个字符串，没有「接口类型」字段。作者用<b>前缀匹配</b>把路径翻译成枚举，再翻译成适配器。
+    这是一个刻意的简化：让 JSON 对用户保持极简（只写路径），把复杂度关在代码里。
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:80px">方向</th><th style="width:290px">路径前缀</th><th style="width:130px">枚举</th><th>实际注入的适配器</th></tr></thead>
+      <tbody>
+        <tr><td class="m">read</td><td class="m2">"" 或 "None"</td><td><span class="tag">NONE</span></td><td class="n"><code>WriteOnly</code>（只写不读）</td></tr>
+        <tr><td class="m">read</td><td class="m2">/xyz/openbmc_project/extsensors/</td><td><span class="tag ok">EXTERNAL</span></td><td class="n">不建 <code>PluggableSensor</code>，改走 <code>HostSensor::createTemp()</code></td></tr>
+        <tr><td class="m">read</td><td class="m2">/xyz/openbmc_project/</td><td><span class="tag mid">DBUSPASSIVE</span></td><td class="n"><code>DbusPassive::createDbusPassive()</code>（风扇额外挂共享的 <code>DbusPassiveRedundancy</code>）</td></tr>
+        <tr><td class="m">read</td><td class="m2">/sys/</td><td><span class="tag ok">SYSFS</span></td><td class="n"><code>SysFsRead</code></td></tr>
+        <tr><td class="m">read</td><td class="m2">其他</td><td><span class="tag no">UNKNOWN</span></td><td class="n">回退到 <code>WriteOnly</code>（不报错，静默降级）</td></tr>
+        <tr><td class="m">write</td><td class="m2">"" 或 "None"</td><td><span class="tag">NONE</span></td><td class="n"><code>ReadOnlyNoExcept</code></td></tr>
+        <tr><td class="m">write</td><td class="m2">/sys/</td><td><span class="tag ok">SYSFS</span></td><td class="n"><code>max &gt; 0</code> ? <code>SysFsWritePercent</code> : <code>SysFsWrite</code></td></tr>
+        <tr><td class="m">write</td><td class="m2">/xyz/openbmc_project/</td><td><span class="tag mid">DBUSACTIVE</span></td><td class="n"><code>max &gt; 0</code> ? <code>DbusWritePercent</code> : <code>DbusWrite</code></td></tr>
+        <tr><td class="m">write</td><td class="m2">其他</td><td><span class="tag no">UNKNOWN</span></td><td class="n"><code>ReadOnlyNoExcept</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>顺序敏感：</b><code>getReadInterfaceType</code> 必须先判 <code>/xyz/openbmc_project/extsensors/</code> 再判 <code>/xyz/openbmc_project/</code>，
+    因为后者是前者的前缀。<code>build_utils.cpp</code> 里两个 <code>if</code> 的书写顺序就是正确性本身——调换会让所有外部传感器退化成 passive 读，进而永远超时。
+  </div>
+
+  <div class="dec">
+    <p class="dq">为什么同一个路径在 read 与 write 两侧会得到不同的枚举（EXTERNAL / DBUSPASSIVE vs DBUSACTIVE）？</p>
+    <p>因为「读」与「写」的语义不对称：读 D-Bus 传感器意味着<b>订阅别人的值</b>（passive listener），写 D-Bus 意味着<b>我们成为被观察者</b>（active writer 去驱动 <code>Fan.Speed</code> 之类的属性）。
+    <code>extsensors</code> 命名空间是第三种：那里的值是外部主动推给我们，所以读侧要变成 <code>HostSensor</code>（我们提供服务），写侧却仍然是普通 active 写。<b>路径前缀承载的是「拓扑位置」，不是「数据类型」。</b></p>
+    <div class="why"><b>收益</b><span>JSON 配置零冗余，运维只需知道路径。</span></div>
+    <div class="cost"><b>代价</b><span>拼写错误（例如漏掉尾部 <code>/</code>、或 <code>extsensor</code> 少个 s）会静默降级成 <code>UNKNOWN</code> 而不是报错，故障表现为「传感器一直是 NaN / fail-safe」，很难定位。</span></div>
+  </div>
+
+  <h3><code>max &gt; 0</code> 的含义：百分比模式 vs 原始模式<span class="fn">sensors/builder.cpp</span></h3>
+  <p>
+    写侧选择 <code>*Percent</code> 变体的唯一依据是 <code>cfg.max &gt; 0</code>。作者用它同时表达两件事：<b>「这个 PWM 通道的量程是 min..max」</b> 与 <b>「请把 PID 输出的 0~100 百分比换算成原始寄存器值」</b>。
+    当 <code>max == 0</code>（默认值）时退化为原始写法，适配器直接把值写出去。同一个字段承担两种语义是这套配置的一个历史包袱，但它避免了再加一个 <code>percentMode</code> 布尔。
+  </p>
+  <p>
+    另外，<code>from_json</code> 对 <code>min</code>/<code>max</code> 做了显式防御：非 <code>fan</code> 类型如果写了这两项，会打印 <code>"Non-fan types ignore min value specified"</code> 并丢弃。
+    这印证了设计边界——<b>只有风扇是可写实体，其他传感器（temp / margin / power / powersum）一律配 <code>ReadOnlyNoExcept</code></b>。
+  </p>
+</section>
+
+<!-- ================= 04 ================= -->
+<section id="s4">
+  <div class="sec-h"><span class="sec-n">04</span><span class="sec-t"><code>SensorManager</code>：全局注册表与按类型索引</span></div>
+  <p class="sec-d">
+    <code>manager.hpp</code> 只有 69 行，但它决定了整个系统的并发模型与 D-Bus 拓扑。
+  </p>
+
+  <pre><span class="k">class</span> <span class="t">SensorManager</span>
+{
+  <span class="k">public</span>:
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="k">auto</span> SensorRoot = <span class="s">"/xyz/openbmc_project/extsensors"</span>;
+
+    <span class="t">SensorManager</span>(sdbusplus::bus_t&amp; pass, sdbusplus::bus_t&amp; host)
+        : _passiveListeningBus(pass), _hostSensorBus(host)
+    {
+        <span class="c">// 在 host 总线上注册 extsensors 命名空间，供外部写入</span>
+        _hostSensorBus.get().request_name(...);
+        <span class="t">server::manager_t</span>(_hostSensorBus, SensorRoot);
+    }
+
+    <span class="k">void</span> addSensor(<span class="k">const</span> std::string&amp; type, <span class="k">const</span> std::string&amp; name,
+                   std::unique_ptr&lt;<span class="t">Sensor</span>&gt; sensor);
+    <span class="t">Sensor</span>* getSensor(<span class="k">const</span> std::string&amp; name);   <span class="c">// .at() —— 不存在即抛异常</span>
+
+  <span class="k">private</span>:
+    std::map&lt;std::string, std::unique_ptr&lt;<span class="t">Sensor</span>&gt;&gt; _sensorMap;   <span class="c">// 名字 → 传感器</span>
+    std::map&lt;std::string, std::vector&lt;std::string&gt;&gt; _sensorTypeList; <span class="c">// 类型 → 名字列表</span>
+    std::reference_wrapper&lt;sdbusplus::bus_t&gt; _passiveListeningBus;
+    std::reference_wrapper&lt;sdbusplus::bus_t&gt; _hostSensorBus;
+};</pre>
+
+  <h3>为什么是「两条总线」？</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:210px">总线</th><th style="width:150px">角色</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="m">_passiveListeningBus</td>
+          <td><span class="tag mid">consumer</span></td>
+          <td class="n">所有 <code>DbusPassive</code> 适配器在这条总线上 <code>match</code> 别人的 <code>PropertiesChanged</code>，把值缓存下来。它只读。</td>
+        </tr>
+        <tr>
+          <td class="m">_hostSensorBus</td>
+          <td><span class="tag ok">provider</span></td>
+          <td class="n">我们是 <code>/xyz/openbmc_project/extsensors</code> 的 <b>服务端</b>，<code>HostSensor</code> 对象挂在这条总线上等外部写值。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    把「我读别人」和「别人读我」放在不同总线上，是为了<b>避免拓扑自环</b>：如果同一条总线既订阅又发布，一个名字冲突或一次重入的信号处理就可能让值在环里打转。
+    分开之后，<code>DbusPassiveRedundancy</code>（多路传感器冗余投票）也可以安全地在 consumer 侧做汇聚，而不必担心把自己发布的对象当成输入。
+  </p>
+
+  <h3>为什么 fan 要额外挂 <code>DbusPassiveRedundancy</code>？</h3>
+  <p>
+    <code>builder.cpp</code> 里有一个 <code>static std::shared_ptr&lt;DbusPassiveRedundancy&gt;</code>，首次遇到 passive 风扇时创建，之后所有风扇共用同一个实例。
+    这解决的是「同一个风扇被多路传感器/多路主机上报，需要做冗余仲裁」的问题：冗余器必须<b>看到所有风扇的变化</b>才能投票，所以它天然是全局的，不能每风扇一个。
+    而温度传感器不需要投票（值本身无歧义），因此不传这个参数。
+  </p>
+  <div class="dec">
+    <p class="dq">为什么 <code>getSensor</code> 用 <code>.at()</code>（抛异常）而不是返回 <code>nullptr</code>？</p>
+    <p>因为「zone 配置引用了不存在的传感器」是<b>配置错误</b>，不是运行时状况。运行时的「传感器坏了」由 fail-safe 机制表达（返回 NaN + 进 fail-safe 表），
+    而「传感器根本没配置」必须立刻炸掉，否则 PID 会拿着空指针继续算，把风扇推到不可预测的占空比。</p>
+    <div class="why"><b>收益</b><span>把配置错误与运行故障两类问题分开：前者崩溃暴露、后者优雅降级。</span></div>
+    <div class="cost"><b>代价</b><span><code>.at()</code> 抛出的是 <code>std::out_of_range</code>，消息里没有传感器名，定位需靠外层 <code>buildZones</code> 已经打印的 <code>PID name / inputs</code> 日志。</span></div>
+  </div>
+</section>
+
+<!-- ================= 05 ================= -->
+<section id="s5">
+  <div class="sec-h"><span class="sec-n">05</span><span class="sec-t">Zone：纯虚契约与聚合根实现分离</span></div>
+  <p class="sec-d">
+    <code>ZoneInterface</code> 是 136 行、30 多个纯虚函数、<b>零成员变量</b>的头文件；<code>DbusPidZone</code> 是 24 个字段、679 行实现的聚合根。
+    这种「接口胖、实现重」的组合看起来反直觉，但它精确地服务了一个目的：<b>让 Controller 只认识抽象，让 D-Bus 只认识实现</b>。
+  </p>
+
+  <div class="diagram">
+    <div class="layer">
+      <div class="layer-tag">L1 · <b>ZoneInterface</b> —— 端口（header-only，无状态）</div>
+      <div class="boxes">
+        <div class="box abs"><span class="bn">身份 / 日志</span><span class="bd">getZoneID · initializeLog · writeLog</span></div>
+        <div class="box abs"><span class="bn">传感器访问</span><span class="bd">getSensor · getSensorNames</span></div>
+        <div class="box abs"><span class="bn">遥测与缓存</span><span class="bd">updateFanTelemetry · updateSensors · initializeCache · getCachedValue(s) · setOutputCache</span></div>
+        <div class="box abs"><span class="bn">setpoint 协议</span><span class="bd">addSetPoint · clearSetPoints · determineMaxSetPointRequest · getMaxSetPointRequest</span></div>
+        <div class="box abs"><span class="bn">RPM 上限</span><span class="bd">addRPMCeiling · clearRPMCeilings</span></div>
+        <div class="box abs"><span class="bn">fail-safe</span><span class="bd">getFailSafeMode · getFailSafePercent · getFailSafeSensors</span></div>
+        <div class="box abs"><span class="bn">时序</span><span class="bd">getCycleIntervalTime · getUpdateThermalsCycle</span></div>
+        <div class="box abs"><span class="bn">模式</span><span class="bd">getManualMode · getRedundantWrite · getAccSetPoint</span></div>
+        <div class="box abs"><span class="bn">驱动</span><span class="bd">processFans · processThermals</span></div>
+      </div>
+    </div>
+    <div class="layer bare">
+      <div class="layer-tag">L2 · <b>DbusPidZone</b> —— 适配器 + 聚合根（24 个字段 / 679 行）</div>
+      <div class="boxes">
+        <div class="box conc"><span class="bn">ZoneInterface</span><span class="bd">契约实现</span></div>
+        <div class="box conc"><span class="bn">ModeObject</span><span class="bd">ServerObject&lt;Mode, DebugZone&gt;：/…/fanctrl/zoneN</span></div>
+        <div class="box conc"><span class="bn">ProcessObject ×N</span><span class="bd">ServerObject&lt;Object.Enable, DebugThermalPower&gt;：每个 PID 一个</span></div>
+        <div class="box conc"><span class="bn">状态聚合</span><span class="bd">setPoints · rpmCeilings · 两套缓存 · fail-safe 表 · 日志流</span></div>
+      </div>
+    </div>
+    <div class="legend"><span>箭头方向：Controller 持 <code>ZoneInterface*</code>；D-Bus 客户端看 <code>DbusPidZone</code> 发布的对象。</span></div>
+  </div>
+
+  <h3>接口分组的用意</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:150px">分组</th><th style="width:120px">主要调用者</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="m">遥测与缓存</td><td class="n">pidloop</td><td class="n">驱动侧只调这几个：每个 fan cycle 调 <code>updateFanTelemetry</code>，每个 thermal cycle 调 <code>updateSensors</code>。所有 I/O 都在这里发生。</td></tr>
+        <tr><td class="m">setpoint 协议</td><td class="n">ThermalController / StepwiseController</td><td class="n"><b>热控 PID 向风扇 PID 传值的唯一通道。</b>接口注释写得很直白：「Fan PIDs are fed set points from Thermal PIDs」。Controller 之间没有直接引用。</td></tr>
+        <tr><td class="m">fail-safe</td><td class="n">FanController</td><td class="n">风扇控制器在每个周期问 zone「现在是否 fail-safe、占空比该是多少」，而不自己维护失效状态。</td></tr>
+        <tr><td class="m">模式</td><td class="n">D-Bus / FanController</td><td class="n"><code>getManualMode()</code> 让 pidloop 直接短路整个循环；<code>getRedundantWrite()</code> 让退出手动后强制重写一次 PWM。</td></tr>
+        <tr><td class="m">驱动</td><td class="n">pidloop</td><td class="n">zone 自己遍历 <code>_fans</code> / <code>_thermals</code> 调 <code>process()</code>，Controller 不互相调用。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dec">
+    <p class="dq">为什么 <code>ZoneInterface</code> 要胖到 30+ 个纯虚函数，而不是拆成几个小接口？</p>
+    <p>因为它的消费者只有一个族（Controller），而 Controller 需要的能力确实就是「读缓存、加 setpoint、问 fail-safe、取时序」这几类。
+    拆成 <code>ICache</code> / <code>ISetPointSink</code> / <code>IFailSafe</code> 会让 <code>createFanPid()</code> 之类的工厂签名膨胀成四个参数，
+    而收益（更细的 mock 粒度）在只有三种 Controller 的现实下并不明显。作者选择了<b>「一个胖端口 + 一个实现」</b>，
+    把解耦压力转移到「Controller 不依赖 <code>DbusPidZone</code>」这一条上——这一条才是真正有价值的。</p>
+    <div class="why"><b>收益</b><span>Controller 侧代码干净（一个 <code>_owner</code> 指针搞定所有交互），工厂函数签名简单。</span></div>
+    <div class="cost"><b>代价</b><span>测试必须实现 30+ 个纯虚函数才能 mock 一个 zone；接口变更的影响面覆盖全部 Controller。</span></div>
+  </div>
+
+  <h3>Zone 的三类 D-Bus 对象</h3>
+  <p>
+    <code>DbusPidZone</code> 同时发布三套对象，覆盖三种不同的使用者：
+  </p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:330px">对象路径</th><th style="width:220px">接口</th><th>使用者 / 作用</th></tr></thead>
+      <tbody>
+        <tr><td class="m">/xyz/openbmc_project/settings/fanctrl/zoneN</td><td class="m2">Mode + DebugZone</td><td class="n">运维：<code>manual(true)</code> 切手动、读 zone 调试信息。</td></tr>
+        <tr><td class="m">…/zoneN/&lt;PID 名&gt;</td><td class="m2">Object.Enable + DebugThermalPower</td><td class="n">运维 + 调试：单个 PID 的 <code>enabled</code>、<code>setpoint</code>、<code>classType</code>（Temperature / Margin / Power / PowerSum）、<code>input</code>/<code>output</code>/<code>leader</code>。</td></tr>
+        <tr><td class="m">/xyz/openbmc_project/extsensors/…</td><td class="m2">Sensor.Value</td><td class="n">外部系统写入（由 <code>SensorManager</code> 注册，<code>HostSensor</code> 提供实例）。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b><code>deferSignals</code> 全线为 <code>true</code>：</b><code>builder.cpp</code> 与 <code>zone.cpp</code> 里都用 <code>defer_emit</code> 构造对象，
+    等所有 PID、所有 zone 都建完、字段都填好之后，才在 <code>buildZones</code> 末尾调一次 <code>zone-&gt;emit_object_added()</code>。
+    否则 D-Bus 客户端可能在 zone 只有一半 PID 时就读到它，看到不一致的拓扑。
+  </div>
+</section>
+
+<!-- ================= 06 ================= -->
+<section id="s6">
+  <div class="sec-h"><span class="sec-n">06</span><span class="sec-t">一个控制周期的生命周期</span></div>
+  <p class="sec-d">
+    <code>pidControlLoop</code> 是一个 asio 递归定时器：每周期结束时把 <code>timer-&gt;expires_at(nextTime)</code> 推到<b>原始到期时间 + 周期</b>，
+    而不是「现在 + 周期」。注释解释了原因：防止 CPU 执行时间把周期越拖越长。
+  </p>
+
+  <div class="steps">
+    <div class="step hot">
+      <div><div class="sh">initializeLog() <em>· 仅首周期</em></div>
+      <div class="sd">写 CSV 表头：<code>epoch_ms,setpt,requester</code> + 每个风扇 <code>name,name_raw,name_pwm,name_pwm_raw</code> + 每个温度点 <code>name,name_raw</code> + <code>failsafe</code>。表结构在启动时一次性确定，之后只追加行。</div></div>
+    </div>
+    <div class="step hot">
+      <div><div class="sh">initializeCache() <em>· 仅首周期</em></div>
+      <div class="sd">所有输入缓存填 <code>NaN</code>，<b>并对每个输入主动调 <code>markSensorMissing(name, "")</code></b> —— 即「启动即 fail-safe」。这样在第一个真实读数到来之前，风扇走安全占空比而不是 0% 或满速。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">getManualMode() <em>· 每周期</em></div>
+      <div class="sd">若为手动模式，<b>直接递归下一周期</b>，跳过全部读写。手动模式下 zone 完全不碰硬件，把控制权交给外部（通常是运维通过 D-Bus 直接写 PWM）。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">updateFanTelemetry() <em>· 每 fan cycle</em></div>
+      <div class="sd">按 <code>_fanInputs</code> 读每个风扇转速 → <code>processSensorInputs&lt;true&gt;()</code>。模板参数 <code>true</code> 表示「这是风扇，日志里要并排记 PWM」。同时输出上一周期的 PWM 与 RPM 对照。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">updateSensors() <em>· 每 thermal cycle</em></div>
+      <div class="sd"><code>processSensorInputs&lt;false&gt;()</code> 读温度 / margin / 功率。用 <code>false</code> 因为热传感器没有 PWM 输出。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">clearSetPoints() + clearRPMCeilings()</div>
+      <div class="sd">清空上一轮所有热控 PID 提交的 setpoint 与 RPM 上限，并复位 <code>_maximumSetPoint</code>。这是「每轮重新投票」的语义——没有累积状态，也没有滞后。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">processThermals()</div>
+      <div class="sd">遍历 <code>_thermals</code>（ThermalController + StepwiseController），每个 <code>process()</code> 内部读缓存、算输出、调 <code>_owner-&gt;addSetPoint()</code> / <code>addRPMCeiling()</code>。</div></div>
+    </div>
+    <div class="step hot">
+      <div><div class="sh">determineMaxSetPointRequest()</div>
+      <div class="sd">仲裁：先被 <code>rpmCeilings</code> 的最低值截断（名字记为 "Ceiling"），再被 <code>minThermalOutput</code> 托底（名字记为 "Minimum"），最后决定 <code>_maximumSetPointName</code>（即 <code>leader()</code>）。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">processFans()</div>
+      <div class="sd">遍历 <code>_fans</code>，FanController 用 <code>getMaxSetPointRequest()</code> 作为目标转速，算 PID、套 fail-safe 下限、调 <code>write()</code>。之后清 <code>_redundantWrite</code>（一次性标志）。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">writeLog() <em>· 每周期</em></div>
+      <div class="sd">追加 <code>,failsafe</code> 列，结束本行。</div></div>
+    </div>
+  </div>
+
+  <h3>风扇周期与热控周期的时间配比</h3>
+  <p>
+    默认 <code>cycleIntervalTimeMS = 100</code>（风扇 10Hz）、<code>updateThermalsTimeMS = 1000</code>（热控 1Hz）。作者没有用两个独立定时器，
+    而是用 <code>cycleCnt</code> 累加器在单条循环里做<b>频率除法</b>，注释明确提到「If thermal time is not an exact multiple of fan time, there will be some remainder left over, to keep the timing correct」。
+  </p>
+  <div class="clock">
+    <div class="track">
+      <div class="track-l">fan 100ms</div>
+      <div class="cells">
+        <div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div>
+        <div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div><div class="cell on"><span>F</span></div>
+      </div>
+    </div>
+    <div class="track">
+      <div class="track-l">thermal 1000ms</div>
+      <div class="cells">
+        <div class="cell on2"><span>T</span></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      </div>
+    </div>
+    <div class="cap">风扇每 100ms 调一次 <code>processFans()</code>；热控每满 1000ms（<code>cycleCnt &gt;= msPerThermalCycle</code>）插一次 <code>processThermals()</code>。余数是刻意保留的，用于非整数倍周期时保持长期相位对齐。</div>
+  </div>
+
+  <div class="dec">
+    <p class="dq">为什么风扇慢不了（10Hz），而热控可以慢（1Hz）？</p>
+    <p>因为两者的被控对象惯性不同：风扇转速环的响应时间在百毫秒级，必须快；而温度是热容积分量，秒级变化都很小，跑太快只会让 PID 的微分项被噪声主导。
+    <b>把两个时间常数分开配置、并在同一个循环里按比例调度</b>，比开两个线程更省资源，也避免了两个线程同时访问 zone 缓存所需的锁。</p>
+    <div class="why"><b>收益</b><span>单线程、零锁、时序严格由 asio 保证。</span></div>
+    <div class="cost"><b>代价</b><span>如果某个 <code>process()</code> 阻塞（例如一次慢 D-Bus 调用），整个 zone 的风扇与热控都被拖住——没有隔离。</span></div>
+  </div>
+</section>
+
+<!-- ================= 07 ================= -->
+<section id="s7">
+  <div class="sec-h"><span class="sec-n">07</span><span class="sec-t">fail-safe 模型：用「集合」而不是「布尔标志」表达状态</span></div>
+  <p class="sec-d">
+    这是全篇最精妙的一处设计。<code>DbusPidZone</code> 没有 <code>bool _failSafe</code>，而是维护一张 <code>FailSafeSensorsMap = map&lt;string, pair&lt;string, double&gt;&gt;</code>，
+    语义是「<b>当前处于失效的传感器 → (原因, 该传感器要求的占空比)</b>」。于是：
+  </p>
+
+  <pre><span class="c">// 状态判定就是一次 empty()</span>
+<span class="k">bool</span> <span class="t">DbusPidZone</span>::getFailSafeMode() { <span class="k">return</span> !_failSafeSensors.empty(); }
+
+<span class="c">// 进入：写入 name → (failReason, percent)</span>
+<span class="k">void</span> <span class="t">DbusPidZone</span>::markSensorMissing(<span class="k">const</span> std::string&amp; name,
+                                    <span class="k">const</span> std::string&amp; failReason)
+{
+    <span class="k">if</span> (_missingAcceptable.count(name)) { <span class="c">/* 白名单：只记日志，不进 fail-safe */</span> <span class="k">return</span>; }
+
+    <span class="c">// 单传感器覆盖 > zone 默认</span>
+    <span class="t">double</span> pct = _sensorFailSafePercent[name] != <span class="n">0</span>
+                     ? _sensorFailSafePercent[name] : _zoneFailSafePercent;
+    _failSafeSensors[name] = std::make_pair(failReason, pct);
+}
+
+<span class="c">// 恢复：擦除即恢复，无需额外状态迁移</span>
+<span class="k">else</span> { _failSafeSensors.erase(sensor); <span class="c">/* “The sensor has recovered.” */</span> }</pre>
+
+  <div class="dec">
+    <p class="dq">为什么不用一个布尔标志 + 一个失效计数器？</p>
+    <p>因为风扇控制器需要知道「<b>是谁</b>坏了」和「<b>该给多少占空比</b>」。布尔标志只能回答「要不要 fail-safe」，
+    一旦要回答「给多少」，就得再挂一张表与布尔标志同步——两个状态源必然出现不一致。<b>让集合本身成为唯一真源</b>，
+    <code>getFailSafeMode()</code> 是派生量、<code>getFailSafeSensors()</code> 是同一份数据、恢复只是 <code>erase</code>，不可能不一致。</p>
+    <div class="why"><b>收益</b><span>状态迁移零成本（插入/删除），多传感器同时失效自动合并，恢复语义天然幂等。</span></div>
+    <div class="cost"><b>代价</b><span>每次判定要 <code>empty()</code>（O(1)，可忽略）；但 map 分配在热路径上（每周期可能插入/删除），有轻微堆开销。</span></div>
+  </div>
+
+  <h3>三级兜底：从「谁要求的」到「最终给多少」</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:60px">层级</th><th style="width:230px">来源</th><th style="width:130px">数据结构</th><th>规则</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="m">L1</td>
+          <td class="n">单个 PID 的 <code>failSafePercent</code>（JSON 里每条 PID 可配）</td>
+          <td class="m2">_sensorFailSafePercent</td>
+          <td class="n">多个 PID 引用同一传感器时<b>取最大值</b>（<code>addPidFailSafePercent</code> 里 <code>std::max</code>）——更保守者胜。</td>
+        </tr>
+        <tr>
+          <td class="m">L2</td>
+          <td class="n">zone 级 <code>ZoneConfig.failsafePercent</code></td>
+          <td class="m2">_zoneFailSafePercent</td>
+          <td class="n">L1 没配（= 0）时回退到此值。</td>
+        </tr>
+        <tr>
+          <td class="m">L3</td>
+          <td class="n">所有失效传感器的最终仲裁</td>
+          <td class="m2">getFailSafePercent()</td>
+          <td class="n">在整张表上取<b>最大的 percent</b>；若该最大值仍为 0，则再退回 <code>_zoneFailSafePercent</code>。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><span class="t">double</span> <span class="t">DbusPidZone</span>::getFailSafePercent()
+{
+    <span class="k">if</span> (_failSafeSensors.empty()) <span class="k">return</span> _zoneFailSafePercent;
+
+    <span class="c">// 注意比较的是 pair.second.second（percent），取最大</span>
+    <span class="k">auto</span> maxData = std::max_element(_failSafeSensors.begin(), _failSafeSensors.end(),
+        [](<span class="k">const</span> <span class="t">FailSafeSensorPair</span>&amp; a, <span class="k">const</span> <span class="t">FailSafeSensorPair</span>&amp; b) {
+            <span class="k">return</span> a.second.second &lt; b.second.second;
+        });
+
+    <span class="c">// 全为 0 时兜底到 zone 默认（源码注明 dbusconfiguration.cpp 的默认值是 0）</span>
+    <span class="k">if</span> (maxData-&gt;second.second == <span class="n">0</span>) <span class="k">return</span> _zoneFailSafePercent;
+    <span class="k">return</span> maxData-&gt;second.second;
+}</pre>
+  <p>
+    <b>方向性：始终取最大。</b>这是一个安全关键选择——多个传感器同时坏掉时，如果取平均或取最小，可能出现「一个要求 80%、一个要求 30%，折中成 55%」的欠冷却结果。
+    取最大则保证任何一个失效源都能单方面把自己的安全值拉满。
+  </p>
+
+  <h3>白名单：<code>_missingAcceptable</code></h3>
+  <p>
+    JSON 里每个输入可以标 <code>"missingIsAcceptable": true</code>，进 <code>addFanInput(..., missingAcceptable)</code> / <code>addThermalInput(...)</code> 时被塞进 <code>_missingAcceptable</code> 集合。
+    <code>markSensorMissing</code> 开头就检查这个集合，命中则只打日志不改变 fail-safe 状态。
+  </p>
+  <p>
+    典型用途：整机上某些温度点是<b>可选硬件</b>（某个 SKU 没有那张卡）。如果不加白名单，机器一上电就永久 fail-safe，风扇长期在安全占空比、噪声大且费电。
+    白名单让「可选但确实没有」与「应该有但坏了」在配置层面区分开。
+  </p>
+
+  <h3>超时语义：风扇 0 秒，其他 2 秒</h3>
+  <pre><span class="k">if</span> (sensor-&gt;getFailed())
+{
+    markSensorMissing(name, sensor-&gt;getFailReason());        <span class="c">// 适配器主动报告坏了</span>
+}
+<span class="k">else if</span> (timeout != <span class="n">0</span> &amp;&amp; duration &gt;= period)
+{
+    markSensorMissing(name, <span class="s">"Sensor timeout"</span>);            <span class="c">// 数据太旧</span>
+    outputFailsafeLogWithZone(..., <span class="s">"The sensor has timed out."</span>);
+}
+<span class="k">else</span>
+{
+    _failSafeSensors.erase(name);                            <span class="c">// 恢复了</span>
+    <span class="c">// “The sensor has recovered.”</span>
+}</pre>
+  <p>
+    <code>Sensor::getDefaultTimeout()</code> 里 <code>fan → 0</code> 的用意是：<b>风扇转速为 0 是一个合法状态</b>（风扇停转、或者整机待机），
+    而「风扇该报数但没报」由 <code>getFailed()</code> 而不是超时来判定。温度 / 功率则相反——2 秒没更新就一定意味着数据源卡住了。
+  </p>
+  <div class="info">
+    <b>恢复是隐式的。</b>代码里没有 <code>markSensorRecovered()</code> 这样的函数，恢复的唯一动作是「这一轮没有触发任何一个失效分支」→ 顺手 erase。
+    这让「恢复」不可能被遗忘，也不需要额外的状态机；但它也意味着<b>一次瞬时的读取成功就能把传感器踢出 fail-safe</b>，没有去抖（debounce）。
+    作者把去抖留给 FanController 的 <code>failSafeTransition</code> 日志，而不是状态本身。
+  </div>
+
+  <h3>日志限速：<code>allowThrottle</code></h3>
+  <pre><span class="c">// zone.cpp 文件级静态</span>
+<span class="k">bool</span> allowThrottle(<span class="k">const</span> tstamp&amp; now, <span class="k">const</span> std::chrono::seconds&amp; pace)
+{
+    <span class="k">static</span> tstamp then;
+    <span class="k">static</span> <span class="k">bool</span> first = <span class="k">true</span>;
+    <span class="k">if</span> (first || now - then &gt;= pace) { then = now; first = <span class="k">false</span>; <span class="k">return</span> <span class="k">true</span>; }
+    <span class="k">return</span> <span class="k">false</span>;
+}</pre>
+  <p>
+    传感器失效时，<code>markSensorMissing</code> 会被以 10Hz 的频率反复调用。如果没有限速，一个坏风扇能在几秒钟内把 journal 灌满并把 CPU 吃在格式化字符串上。
+    <code>allowThrottle</code> 把它压到每 3 秒最多一条（用于 tuning setpoint 文件读取的告警）。注意它用<b>函数级 <code>static</code></b> 而非成员变量——说明作者把它当作「进程级噪声抑制」，而非 per-zone 状态。
+  </p>
+</section>
+
+<!-- ================= 08 ================= -->
+<section id="s8">
+  <div class="sec-h"><span class="sec-n">08</span><span class="sec-t">双级缓存：输入缓存与输出缓存为什么分开</span></div>
+  <p class="sec-d">
+    <code>DbusPidZone</code> 里有两张同类型（<code>map&lt;string, ValueCacheEntry&gt;</code>）的表，名字只差一个词：<code>_cachedValuesByName</code> 与 <code>_cachedFanOutputs</code>。
+    它们服务的是完全不同的读取者。
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:190px">缓存</th><th style="width:170px">写入者</th><th style="width:210px">读取者</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="m">_cachedValuesByName</td>
+          <td class="n"><code>processSensorInputs()</code><br>（读传感器后立即写）</td>
+          <td class="n"><code>getCachedValue(s)()</code> → Controller</td>
+          <td class="n"><b>控制回路的唯一数据源。</b>Controller 从不直接调 <code>sensor-&gt;read()</code>，只查这张表。保证一轮循环内所有 PID 看到的是同一时刻的快照。</td>
+        </tr>
+        <tr>
+          <td class="m">_cachedFanOutputs</td>
+          <td class="n"><code>setOutputCache()</code><br>（FanController 写完后回填）</td>
+          <td class="n"><code>updateFanTelemetry()</code> 的日志分支</td>
+          <td class="n"><b>仅供日志与可观测性。</b>把「上一周期我们命令的 PWM」与「这一周期读到的 RPM」并排写进 CSV，方便画图分析闭环行为。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>为什么一个 <code>ValueCacheEntry</code> 要同时含 <code>scaled</code> 与 <code>unscaled</code></h3>
+  <pre><span class="k">struct</span> <span class="t">ValueCacheEntry</span>
+{
+    <span class="t">double</span> scaled;    <span class="c">// 归一化到 (0.0, 1.0)，用配置的 min/max 换算 —— PID 用这个</span>
+    <span class="t">double</span> unscaled;  <span class="c">// 原始值 —— 日志、D-Bus 调试、恢复 RPM 时用这个</span>
+};</pre>
+  <p>
+    把两者放进同一个结构而不是两张表，是为了保证 <b>「同一时刻的归一化值与原始值必定成对」</b>。
+    如果分成两张 map，某次读取只更新了一张，PID 就会拿着新的 scaled 配旧的 unscaled，日志里出现无法解释的错位。
+    <code>FanController::inputProc()</code> 的注释也印证了这点：它会「Read the unscaled value, to correctly recover the RPM」。
+  </p>
+
+  <h3>NaN 初始化与「启动即安全」</h3>
+  <pre><span class="k">void</span> <span class="t">DbusPidZone</span>::initializeCache()
+{
+    <span class="k">auto</span> nan = std::numeric_limits&lt;<span class="t">double</span>&gt;::quiet_NaN();
+    <span class="k">for</span> (<span class="k">const</span> <span class="k">auto</span>&amp; f : _fanInputs)
+    {
+        _cachedValuesByName[f] = {nan, nan};
+        _cachedFanOutputs[f]  = {nan, nan};
+        markSensorMissing(f, <span class="s">""</span>);       <span class="c">// ← 启动即 fail-safe</span>
+    }
+    <span class="k">for</span> (<span class="k">const</span> <span class="k">auto</span>&amp; t : _thermalInputs)
+    {
+        _cachedValuesByName[t] = {nan, nan};
+        markSensorMissing(t, <span class="s">""</span>);
+    }
+}</pre>
+  <div class="dec">
+    <p class="dq">为什么启动时把所有传感器预置成 fail-safe，而不是从 0 开始？</p>
+    <p><code>pidloop.cpp</code> 的长注释讨论过这个问题，并给出了结论：「<i>Another approach would be to start all sensors in worst-case values, and fail-safe mode and then clear out of fail-safe mode once we start getting values. Which I think it is a solid approach.</i>」
+    对比另一种做法（等第一个读数到来再决定），「启动即 fail-safe」把最坏情况放在最前面：<b>上电瞬间风扇就已经在安全占空比</b>，之后每个传感器读数成功就自动被 erase 出表。
+    如果反过来，从上电到第一个读数之间风扇会是 0%，这在真实机箱里可能几秒钟就把 CPU 烤了。</p>
+    <div class="why"><b>收益</b><span>安全侧默认，且恢复逻辑与正常路径共用同一段代码（erase），不需要特判「启动阶段」。</span></div>
+    <div class="cost"><b>代价</b><span>开机瞬间全速/安全转速的噪声；若配置把 <code>failsafePercent</code> 设得很高，用户会觉得「刚上电风扇就狂转」。</span></div>
+  </div>
+</section>
+
+<!-- ================= 09 ================= -->
+<section id="s9">
+  <div class="sec-h"><span class="sec-n">09</span><span class="sec-t">setpoint 聚合与仲裁：热控 PID 如何「投票」给风扇</span></div>
+  <p class="sec-d">
+    这是 Zone 模型里唯一的「多对一」通道：N 个热控控制器每轮各自提出一个目标转速，Zone 负责把它们合并成一个数字交给风扇 PID。
+    作者提供了两种合并语义，由一个 zone 级开关切换。
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:130px">模式</th><th style="width:150px">开关</th><th>合并规则</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="n"><b>取最大</b>（默认）</td>
+          <td class="m2">_accumulateSetPoint = false</td>
+          <td class="n">每个 <code>addSetPoint()</code> 与当前 <code>_maximumSetPoint</code> 比较取大；并列时<b>先到者胜</b>（名字只记第一次的那个）。语义是「谁最热，听谁的」。</td>
+        </tr>
+        <tr>
+          <td class="n"><b>累加</b></td>
+          <td class="m2">_accumulateSetPoint = true</td>
+          <td class="n">先做<b>前缀剥离</b>：<code>Linear_Temp_CPU0</code> → <code>Temp_CPU0</code>（<code>name.substr(name.find('_') + 1)</code>），同 profile 的多个控制器输出<b>相加</b>。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><span class="k">void</span> <span class="t">DbusPidZone</span>::addSetPoint(<span class="t">double</span> setPoint, <span class="k">const</span> std::string&amp; name)
+{
+    <span class="k">if</span> (!isPidProcessEnabled(name)) <span class="k">return</span>;   <span class="c">// 运维通过 D-Bus 禁用的 PID 不参与投票</span>
+
+    <span class="k">if</span> (getAccSetPoint())
+    {
+        <span class="k">auto</span> profileName = name.substr(name.find(<span class="s">'_'</span>) + <span class="n">1</span>);  <span class="c">// 去掉算法前缀</span>
+        setPoints[profileName] += setPoint;
+    }
+    <span class="k">else</span> <span class="k">if</span> (setPoint &gt; _maximumSetPoint)
+    {
+        _maximumSetPoint     = setPoint;
+        _maximumSetPointName = name;
+    }
+}</pre>
+
+  <h3>累加模式解决的是什么问题</h3>
+  <p>
+    当一个<b>温度点同时被 PID 与 Stepwise 控制</b>（源码注释：<i>One sensor may have stepwise and PID at the same time</i>），
+    两者都希望对这个 profile 出力。取最大会丢掉其中一路的贡献（stepwise 通常给出阶梯值，PID 给出平滑修正），累加则把「阶梯 + 修正」叠加起来。
+    <code>determineMaxSetPointRequest()</code> 里还有一段配套逻辑：累加模式下要把最终 <code>leader</code> 名字拼成 <code>"PID_xxx + Stepwise_xxx"</code>，让日志能看出是谁合力的。
+  </p>
+
+  <h3>三级仲裁顺序（顺序不可换）</h3>
+  <div class="flow">
+    <div class="band">
+      <div class="band-l">① 热控投票</div>
+      <div class="band-v">
+        <span class="chip algo">addSetPoint() × N</span>
+        <span class="chip algo">addRPMCeiling() × N</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>determineMaxSetPointRequest()</span></div>
+    <div class="band">
+      <div class="band-l">② 硬上限</div>
+      <div class="band-v">
+        <span class="chip out">rpmCeilings 取最小 → 截断，leader = "Ceiling"</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>minThermalOutput 托底</span></div>
+    <div class="band">
+      <div class="band-l">③ 硬下限</div>
+      <div class="band-v">
+        <span class="chip val">若 setpoint &lt; minThermalOutput → 抬到下限，leader = "Minimum"</span>
+      </div>
+    </div>
+    <div class="band-arrow"><span>_maximumSetPoint / _maximumSetPointName</span></div>
+    <div class="band">
+      <div class="band-l">④ 消费</div>
+      <div class="band-v">
+        <span class="chip rt">FanController: getMaxSetPointRequest()</span>
+        <span class="chip rt">D-Bus: leader()</span>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:14px">
+    顺序是「先截上限、再托下限」。如果反过来，一个极高的 ceiling 会被 min 托底逻辑覆盖掉，上限就失效了。
+    这个顺序保证了<b>「<code>minThermalOutput</code> 是绝对不能低于的底线，ceiling 是不能超过的天花板，两者冲突时下限优先」</b>——
+    在散热场景里，欠冷却（温度失控）的后果永远比过冷却（噪声）严重。
+  </p>
+
+  <h3>手动模式的退出语义：<code>_redundantWrite</code></h3>
+  <pre><span class="k">void</span> <span class="t">DbusPidZone</span>::setManualMode(<span class="k">bool</span> mode)
+{
+    <span class="k">if</span> (!mode) { _redundantWrite = <span class="k">true</span>; }   <span class="c">// 从手动切回自动</span>
+    _manualMode = mode;
+}</pre>
+  <p>
+    手动期间 zone 完全不写 PWM，所以它的「期望值」与硬件实际值出现分叉。切回自动时，如果 PID 算出与上次写入相同的 PWM，
+    常规优化（不变则不写）会让硬件继续停留在手动期间设置的值上。<code>_redundantWrite</code> 就是用来<b>强制写一次</b>的标志，
+    由 <code>processFans()</code> 在消费后清零——一个典型的「一次性标志 + 消费即清」模式，避免重复写。
+  </p>
+  <div class="note">
+    <b>注意 <code>isPidProcessEnabled</code> 的实现有隐患：</b>它写的是 <code>_pidsControlProcess[name]-&gt;enabled()</code>，
+    用 <code>operator[]</code> 会<b>在表里插入空指针</b>（若名字不存在），随后解引用即崩溃。而它被 <code>addSetPoint</code> 在热路径上调用。
+    现实中能走到这里说明 <code>buildZones</code> 已为该 PID 建过 <code>ProcessObject</code>，所以不会触发；但这是一个「靠构造顺序保证正确性」的隐式契约。
+  </div>
+</section>
+
+<!-- ================= 10 ================= -->
+<section id="s10">
+  <div class="sec-h"><span class="sec-n">10</span><span class="sec-t">配置两段式：<code>conf::*</code> 作为唯一中间模型</span></div>
+  <p class="sec-d">
+    作者没有让 JSON 直接构造运行时对象，而是引入了 <code>conf.hpp</code> 一层纯数据结构。这一层的价值在于：
+    <b>同一个中间模型可以同时服务静态 JSON 与 entity-manager 动态配置</b>，而运行时对象完全不需要知道自己的配置从哪来。
+  </p>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:210px">conf 结构</th><th style="width:180px">从哪来</th><th style="width:200px">变成什么</th><th>关键字段</th></tr></thead>
+      <tbody>
+        <tr><td class="m">conf::SensorConfig</td><td class="n">fan-info.json 的 <code>sensors[]</code></td><td class="n">一个 <code>Sensor</code>（Pluggable 或 Host）</td><td class="n"><code>type / readPath / writePath / min / max / timeout / ignoreDbusMinMax / unavailableAsFailed / ignoreFailIfHostOff</code></td></tr>
+        <tr><td class="m">conf::ControllerInfo</td><td class="n">zone 的 <code>pids{}</code></td><td class="n">一个 <code>Controller</code></td><td class="n"><code>type / inputs[] / setpoint / pidInfo / stepwiseInfo / failSafePercent</code></td></tr>
+        <tr><td class="m">conf::SensorInput</td><td class="n">PID 的 <code>inputs[]</code></td><td class="n">zone 的输入名 + 名字装饰</td><td class="n"><code>name / convertMarginZero / convertTempToMargin / missingIsAcceptable</code> —— 这三个装饰项<b>来自 PID 配置而非 Sensor 配置</b>，注释明确说是为了兼容 entity-manager 动态传感器</td></tr>
+        <tr><td class="m">conf::ZoneConfig</td><td class="n">zone 配置</td><td class="n">构造参数</td><td class="n"><code>minThermalOutput / failsafePercent / cycleTime / accumulateSetPoint</code></td></tr>
+        <tr><td class="m">conf::CycleTime</td><td class="n">zone 配置</td><td class="n">两个整数</td><td class="n"><code>cycleIntervalTimeMS = 100</code> / <code>updateThermalsTimeMS = 1000</code>（默认值即设计意图）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dec">
+    <p class="dq">为什么 <code>SensorInput</code> 要把 <code>missingIsAcceptable</code> 这类「装饰」放在 PID 配置里，而不是传感器配置里？</p>
+    <p>因为同一个传感器在不同 PID 里的重要性不同：CPU0 温度对「风扇曲线 A」是必须的，对「风扇曲线 B」可能只是参考。
+    如果把 <code>missingIsAcceptable</code> 放在 <code>SensorConfig</code>，它就成了全局属性，无法按用途区分。
+    更实际的原因是注释里写的：<b>要让这套机制能用于 entity-manager 动态创建的传感器</b>——那些传感器的 <code>SensorConfig</code> 不是我们写的，
+    我们只能在 PID 侧（我们自己的配置）里补充语义。</p>
+    <div class="why"><b>收益</b><span>同一物理传感器可被不同 PID 以不同严格程度引用。</span></div>
+    <div class="cost"><b>代价</b><span>「这个传感器缺失是否可接受」的最终结果取决于「哪个 PID 也引用了它」——语义分散在多处，排查时要在 PID 配置里翻。</span></div>
+  </div>
+
+  <h3>构造顺序（<code>buildZones</code> 内的隐式依赖）</h3>
+  <div class="steps">
+    <div class="step hot">
+      <div><div class="sh">make_shared&lt;DbusPidZone&gt;(...)</div>
+      <div class="sd">先建 zone 骨架，传入 <code>mgr</code> 引用、<code>modeControlBus</code>、对象路径、<code>deferSignals=true</code>。此时 D-Bus 上还看不到它。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">按 <code>ControllerInfo.type</code> 分派</div>
+      <div class="sd"><code>"fan"</code> → <code>FanController</code> + <code>addFanInput</code>；<code>isThermalType()</code> → <code>ThermalController</code> + <code>addThermalInput</code> + <code>addPidControlProcess</code>；<code>"stepwise"</code> → <code>StepwiseController</code>。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">addPidFailSafePercent(splitNames(inputs), info.failSafePercent)</div>
+      <div class="sd">在 zone 侧登记「这些传感器如果坏了，至少要给多少」。注意是<b>逐个传感器</b>登记，所以一个 PID 的多个输入会共享同一个 failSafePercent。</div></div>
+    </div>
+    <div class="step hot">
+      <div><div class="sh">zone-&gt;emit_object_added()</div>
+      <div class="sd">全部 PID 装填完毕后一次性发布。这是 <code>deferSignals</code> 的收口点。</div></div>
+    </div>
+    <div class="step">
+      <div><div class="sh">zones[zoneId] = std::move(zone)</div>
+      <div class="sd">交给 <code>main.cpp</code> 的容器，随后为每个 zone 各起一条 <code>pidControlLoop</code>。</div></div>
+    </div>
+  </div>
+  <div class="note">
+    <b>构造顺序即正确性：</b><code>isPidProcessEnabled()</code> 依赖 <code>_pidsControlProcess[name]</code> 已存在（见 §09 的隐患），
+    而它只在 <code>ThermalController</code> / <code>StepwiseController</code> 分支里被 <code>addPidControlProcess</code> 填充。
+    也就是说「只有热控类 PID 才会被 <code>addSetPoint</code> 的 enabled 检查覆盖，风扇 PID 跳过检查」——这是代码结构隐含的行为，没有任何注释说明。
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section id="s11">
+  <div class="sec-h"><span class="sec-n">11</span><span class="sec-t">设计取舍总表</span></div>
+  <p class="sec-d">把全篇的决策压成一张表，便于快速回顾「作者在每个岔路口选了哪条路、付了什么代价」。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:190px">决策点</th><th style="width:260px">选择</th><th style="width:250px">替代方案</th><th>代价 / 代价是否值得</th></tr></thead>
+      <tbody>
+        <tr><td class="n">Sensor 是否持有当前值</td><td class="n"><b>不持有</b>，值由 <code>read()</code> 返回 <code>ReadReturn</code>，存进 Zone 缓存</td><td class="n">Sensor 内置 <code>_value</code> + 时间戳</td><td class="n">每次读取都走适配器；换来 Sensor 无状态、可被多 zone 并发共享 ✅</td></tr>
+        <tr><td class="n">读/写后端如何组合</td><td class="n"><b>策略注入</b> <code>PluggableSensor</code>（reader/writer）</td><td class="n">按后端类型做类层次（SysFsFanSensor、DbusFanSensor…）</td><td class="n">4 读 × 5 写 = 20 类压成 9 + 1 ✅</td></tr>
+        <tr><td class="n">外部推值的传感器</td><td class="n"><b>双继承</b> <code>HostSensor : Sensor, ValueObject</code></td><td class="n">独立 D-Bus server + 回调同步到 Sensor</td><td class="n">引入全库唯一的 mutex；换来零拷贝、零同步延迟 ✅</td></tr>
+        <tr><td class="n">接口类型如何确定</td><td class="n"><b>路径前缀匹配</b>（顺序敏感）</td><td class="n">JSON 显式写 <code>"interface": "sysfs"</code></td><td class="n">配置极简 vs 拼写错误静默降级 ⚠️</td></tr>
+        <tr><td class="n">传感器所有权</td><td class="n"><b>全局</b> <code>SensorManager</code> 独占</td><td class="n">每 zone 一份 Sensor</td><td class="n">D-Bus match / sysfs fd 不重复；换来名字查表 + 运行时校验 ⚠️</td></tr>
+        <tr><td class="n">Zone 契约粒度</td><td class="n"><b>一个胖接口</b>（30+ 纯虚）</td><td class="n">拆成 cache / setpoint / failsafe 多个小接口</td><td class="n">Controller 侧极简 vs mock 成本高、变更影响面大 ⚠️</td></tr>
+        <tr><td class="n">fail-safe 状态表示</td><td class="n"><b>集合</b>（name → (reason, percent)）</td><td class="n">布尔标志 + 计数器 + 单独的表</td><td class="n">单一真源、不可能不一致 ✅</td></tr>
+        <tr><td class="n">恢复语义</td><td class="n"><b>隐式 erase</b>，无 <code>markRecovered()</code></td><td class="n">显式状态机带去抖</td><td class="n">不会忘、幂等；换来一次成功读数即恢复（无去抖）⚠️</td></tr>
+        <tr><td class="n">启动初值</td><td class="n"><b>全 NaN + 全员 fail-safe</b></td><td class="n">从 0 开始，等首个读数</td><td class="n">上电即安全侧；换来开机噪声 ✅</td></tr>
+        <tr><td class="n">双周期调度</td><td class="n"><b>单定时器 + <code>cycleCnt</code> 频率除法</b></td><td class="n">风扇线程 + 热控线程</td><td class="n">无锁、单线程；换来慢调用会拖住整条循环 ⚠️</td></tr>
+        <tr><td class="n">多热控输出合并</td><td class="n"><b>默认取最大</b>，可选累加</td><td class="n">平均 / 加权</td><td class="n">安全侧（最热者胜）；累加模式需前缀剥离约定 ⚠️</td></tr>
+        <tr><td class="n">仲裁顺序</td><td class="n"><b>先 ceiling 截断，再 min 托底</b></td><td class="n">反过来</td><td class="n">保证下限绝对不可违反（欠冷却比过冷却危险）✅</td></tr>
+        <tr><td class="n">配置分层</td><td class="n"><b>conf::* 中间模型</b> + builder 翻译</td><td class="n">JSON 直接构造运行时对象</td><td class="n">同一模型服务静态与动态配置；换来一层样板代码 ✅</td></tr>
+        <tr><td class="n">D-Bus 对象发布时机</td><td class="n"><b>defer_emit + 末尾统一 emit</b></td><td class="n">构造即发布</td><td class="n">客户端不会看到半成品拓扑 ✅</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section id="s12">
+  <div class="sec-h"><span class="sec-n">12</span><span class="sec-t">阅读地图</span></div>
+  <p class="sec-d">如果只想验证本文的某个结论，按下表直接跳到对应文件，不必通读。</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:300px">文件</th><th style="width:70px">行数</th><th>在这里能验证什么</th></tr></thead>
+      <tbody>
+        <tr><td class="m">sensors/sensor.hpp</td><td class="m2">83</td><td class="n">基类只存 name / timeout / ignoreFailIfHostOff，无值无锁；<code>getDefaultTimeout</code> 的 fan=0 规则</td></tr>
+        <tr><td class="m">sensors/pluggable.hpp</td><td class="m2">39</td><td class="n">策略注入的全部实现（只有两个 <code>unique_ptr</code> 成员）</td></tr>
+        <tr><td class="m">sensors/host.hpp / .cpp</td><td class="m2">61 / 97</td><td class="n">双继承、<code>_lock</code> 保护 <code>_updated</code>+<code>_value</code> 成对更新、<code>_value = 0</code> 哨兵</td></tr>
+        <tr><td class="m">sensors/manager.hpp / .cpp</td><td class="m2">69 / 30</td><td class="n">全局注册表、两条总线、<code>.at()</code> 抛异常、按 type 分组</td></tr>
+        <tr><td class="m">sensors/build_utils.cpp</td><td class="m2">62</td><td class="n">四个前缀常量、<b>顺序敏感</b>的 <code>if</code> 链、EXTERNAL vs DBUSPASSIVE 的区别</td></tr>
+        <tr><td class="m">sensors/builder.cpp</td><td class="m2">187</td><td class="n"><code>max &gt; 0</code> 选百分比写、共享 <code>DbusPassiveRedundancy</code>、非 fan 一律只读</td></tr>
+        <tr><td class="m">sensors/buildjson.cpp</td><td class="m2">119</td><td class="n"><code>from_json</code> 的默认值策略、非 fan 的 min/max 警告、timeout 缺省</td></tr>
+        <tr><td class="m">interfaces.hpp</td><td class="m2">—</td><td class="n"><code>ReadReturn</code> / <code>ValueCacheEntry</code> / 端口定义；<code>WriteInterface</code> 持有 min/max</td></tr>
+        <tr><td class="m">conf.hpp</td><td class="m2">—</td><td class="n">五个 conf 结构与注释里写明的设计理由（尤其 <code>SensorInput</code> 的注释）</td></tr>
+        <tr><td class="m">pid/zone_interface.hpp</td><td class="m2">136</td><td class="n">30+ 纯虚函数的完整分组；顶部注释「Fan PIDs are fed set points from Thermal PIDs」</td></tr>
+        <tr><td class="m">pid/zone.hpp</td><td class="m2">264</td><td class="n">24 个字段的聚合根、三类 D-Bus 对象别名、<code>processSensorInputs</code> 模板</td></tr>
+        <tr><td class="m">pid/zone.cpp</td><td class="m2">679</td><td class="n">fail-safe 三级兜底、<code>initializeCache</code> 的启动语义、<code>determineMaxSetPointRequest</code> 仲裁顺序、<code>allowThrottle</code></td></tr>
+        <tr><td class="m">pid/pidloop.cpp</td><td class="m2">145</td><td class="n">循环时序、<code>cycleCnt</code> 频率除法、长注释里对「启动即 fail-safe」的论证</td></tr>
+        <tr><td class="m">pid/builder.cpp</td><td class="m2">159</td><td class="n">zone 与 Controller 的装配顺序、<code>deferSignals</code>、按 type 分派</td></tr>
+        <tr><td class="m">pid/fancontroller.cpp</td><td class="m2">254</td><td class="n">fail-safe 转正逻辑（<code>STRICT_FAILSAFE_PWM</code>）、unscaled 恢复 RPM、0 值忽略</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <span>生成于 /home/mickian/aspeed/aspeed_v1103/build/evb-ast2600/workspace/sources/phosphor-pid-control</span>
+  <span>·</span>
+  <span>相关文档：</span>
+  <a href="./phosphor-pid-control-header-graph.html">头文件依赖图</a>
+  <a href="./phosphor-pid-control-data-models.html">数据模型清单</a>
+  <span>·</span>
+  <span>本文只讨论设计意图，不覆盖 IPMI / Redfish 侧</span>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function (a) {
+    return document.querySelector(a.getAttribute('href'));
+  }).filter(Boolean);
+  if (!sections.length) { return; }
+
+  function onScroll() {
+    var y = window.scrollY + 90;
+    var idx = 0;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].offsetTop <= y) { idx = i; }
+    }
+    links.forEach(function (a, i) { a.classList.toggle('on', i === idx); });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
